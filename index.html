@@ -23,6 +23,8 @@
     --transit-bg:rgba(255,171,76,.14);
     --transit-border:rgba(255,171,76,.42);
     --transit-hover:rgba(255,171,76,.22);
+    --ui-accent:#FEF400;
+    --ui-page:#b8c8dc;
   }
   [data-mode="bright"] {
     --bg:#f2f5fb; --surface:#ffffff; --surface2:#e8eef8; --border:#c5d0e4;
@@ -38,6 +40,8 @@
     --transit-bg:#fff0e8;
     --transit-border:rgba(194,65,12,.35);
     --transit-hover:#ffe4d4;
+    --ui-accent:#003DA5;
+    --ui-page:#5a6a85;
   }
 
   *{box-sizing:border-box;margin:0;padding:0}
@@ -51,9 +55,7 @@
   .hero-title h1 span{color:var(--title-accent)}
   .btn-add{color:var(--btn-ink)}
   .overall-fill{background:linear-gradient(90deg,#FEF400,#003DA5)}
-  .tab-btn.active{border-bottom-color:#FEF400;color:#FEF400}
   .share-tab.active{background:#FEF400;border-color:#FEF400;color:#003DA5}
-  [data-mode="bright"] .tab-btn.active{color:#003DA5;border-bottom-color:#003DA5}
   [data-mode="bright"] .share-tab.active{background:#003DA5;border-color:#003DA5;color:#ffffff}
 
   .hero{
@@ -123,7 +125,7 @@
 
   .mode-toggle{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
   .mode-btn{background:var(--surface2);border:2px solid var(--border);border-radius:999px;color:var(--muted);cursor:pointer;font-family:'Bebas Neue',sans-serif;font-size:13px;font-weight:400;letter-spacing:.06em;padding:8px 18px;transition:all .15s}
-  .mode-btn:hover{border-color:var(--accent2);color:var(--text)}
+  .mode-btn:hover{border-color:var(--ui-accent);color:var(--text)}
   .mode-btn.active{background:var(--accent);border-color:var(--accent);color:var(--btn-ink)}
 
   .hint-box{font-size:11px;color:var(--muted);background:var(--surface2);border:1px dashed var(--border);border-radius:var(--radius);padding:8px 10px;margin-top:8px;line-height:1.45}
@@ -132,7 +134,8 @@
   .tabs-wrap::-webkit-scrollbar{display:none}
   .tab-btn{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;font-family:'Bebas Neue',sans-serif;font-size:12px;font-weight:400;letter-spacing:.06em;padding:9px 12px;text-transform:uppercase;white-space:nowrap}
   .tab-btn:hover{color:var(--text)}
-  .tab-btn.active{color:var(--accent2);border-bottom-color:var(--accent)}
+  .tab-btn.active{color:var(--ui-accent);border-bottom-color:var(--accent)}
+  [data-mode="bright"] .tab-btn.active{color:var(--ui-accent);border-bottom-color:var(--ui-accent)}
 
   .country-bar{padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;gap:5px;flex-wrap:wrap;align-items:center}
   .country-bar label{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-right:2px}
@@ -163,8 +166,8 @@
   .team-heading{display:flex;align-items:center;gap:8px;min-width:0}
   .team-code{font-family:'Bebas Neue',sans-serif;font-size:20px;font-weight:400;letter-spacing:.06em;color:var(--text)}
   .team-name{font-size:10px;color:var(--muted);margin-top:1px}
-  .team-pages{display:inline-block;margin-top:3px;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--accent2);background:color-mix(in srgb,var(--accent) 14%,transparent);border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);border-radius:999px;padding:1px 7px}
-  .s-page{font-size:9px;color:var(--muted);flex-shrink:0;opacity:.75;min-width:28px;text-align:right}
+  .team-pages{display:inline-block;margin-top:3px;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--ui-accent);background:color-mix(in srgb,var(--accent) 14%,transparent);border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);border-radius:999px;padding:1px 7px}
+  .s-page{font-size:9px;color:var(--ui-page);flex-shrink:0;opacity:.95;min-width:28px;text-align:right}
   .header-right{text-align:right;flex-shrink:0}
   .miss-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:999px;display:inline-block;margin-bottom:3px}
   .miss-badge.danger{background:var(--danger-bg);color:var(--danger)}
@@ -181,7 +184,7 @@
   .sticker-row.dupe{background:var(--warning-bg);border-left-color:var(--warning)}
   .sticker-row.dupe:hover{background:var(--dupe-hover)}
   .sticker-row.have{border-left-color:transparent}
-  .s-seq{font-family:'Bebas Neue',sans-serif;font-size:9px;color:var(--muted);min-width:28px;opacity:.55;flex-shrink:0}
+  .s-seq{font-family:'Bebas Neue',sans-serif;font-size:9px;color:var(--ui-page);min-width:28px;opacity:.7;flex-shrink:0}
   .s-num{font-family:'Bebas Neue',sans-serif;font-weight:400;font-size:13px;min-width:20px;color:var(--muted);flex-shrink:0}
   .sticker-row.miss .s-num{color:var(--danger)}
   .sticker-row.dupe .s-num{color:var(--warning)}
@@ -209,7 +212,7 @@
   .postal-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px}
   .postal-card h4{margin:0 0 4px;font-size:13px;font-weight:600}
   .postal-meta{font-size:10px;color:var(--muted);margin-bottom:6px;line-height:1.5}
-  .postal-progress{font-size:10px;color:var(--accent2);font-weight:600;margin-bottom:6px}
+  .postal-progress{font-size:10px;color:var(--ui-accent);font-weight:600;margin-bottom:6px}
   .postal-line{display:flex;align-items:center;gap:6px;font-size:11px;padding:4px 0;border-bottom:1px solid color-mix(in srgb,var(--border) 60%,transparent)}
   .postal-line:last-child{border-bottom:none}
   .postal-line.done{opacity:.55;text-decoration:line-through}
@@ -241,8 +244,7 @@
   .btn-badge .badge{position:absolute;top:-6px;right:-6px;background:var(--warning);color:var(--btn-ink);font-size:9px;font-weight:700;border-radius:999px;min-width:16px;height:16px;line-height:16px;text-align:center;padding:0 4px}
 
   .site-footer{font-size:10px;color:var(--muted);text-align:center;padding:20px 16px 28px;line-height:1.55;border-top:1px solid var(--border);margin-top:8px}
-  .site-footer a{color:var(--accent2)}
-  [data-mode="dark"] .site-footer a{color:var(--accent)}
+  .site-footer a{color:var(--ui-accent)}
   .site-footer-links{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:8px}
 
   @media(max-width:600px){
