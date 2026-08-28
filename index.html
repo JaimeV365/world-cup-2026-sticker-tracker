@@ -348,7 +348,7 @@
     <button type="button" class="btn btn-add" onclick="copyShare()">Copy to clipboard</button>
     <button type="button" class="btn btn-share" onclick="togglePanel('share')">Close</button>
   </div>
-  <div id="copyConfirm" style="font-size:11px;color:var(--success);margin-top:6px;display:none">✓ Copied!</div>
+  <div id="copyConfirm" style="font-size:11px;color:var(--success);margin-top:6px;display:none">✓ Copied! (includes tool link)</div>
 </div>
 
 <div class="panel" id="dataPanel" style="display:none">
@@ -408,10 +408,21 @@
   No trackers · no accounts · your collection never leaves this browser unless you export it.
 </footer>
 <div id="toast"></div>
+<!-- Optional: Cloudflare Web Analytics — see ANALYTICS.md. Uncomment and paste your token from dash.cloudflare.com → Web Analytics
+<script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "YOUR_TOKEN_HERE"}'></script>
+-->
 
 <script>
 const TOTAL = 992;
 const STORAGE_KEY = 'wc2026-sticker-tracker-v1';
+const SITE_URL = 'https://wc2026-sticker-tracker.pages.dev';
+const LIST_ATTRIBUTION = '\n\n— List produced by ' + SITE_URL;
+
+function textForSharedList(text) {
+  const body = String(text || '').trim();
+  if (!body || body === '(none)') return body;
+  return body + LIST_ATTRIBUTION;
+}
 
 const albumOrder = [
   [1,'MEX','Mexico',true],[2,'RSA','South Africa',false],[3,'KOR','South Korea',false],
@@ -1909,7 +1920,7 @@ function renderTradeResult(count) {
 }
 
 function copyFromBtn(btn) {
-  const text = btn.getAttribute('data-copy') || '';
+  const text = textForSharedList(btn.getAttribute('data-copy') || '');
   navigator.clipboard.writeText(text).then(() => {
     const orig = btn.textContent;
     btn.textContent = '✓ Copied!';
@@ -1961,7 +1972,7 @@ function buildShare() {
 }
 
 function copyShare() {
-  const text = document.getElementById('shareOutput').textContent;
+  const text = textForSharedList(document.getElementById('shareOutput').textContent);
   navigator.clipboard.writeText(text).then(() => {
     const c = document.getElementById('copyConfirm');
     c.style.display = 'block';

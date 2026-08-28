@@ -2,8 +2,8 @@
 
 Unofficial, free web app to track your **FIFA World Cup 2026 sticker album** — missing stickers, spares, trade lists, and postal swaps.
 
-**Live site:** [https://jaimev365.github.io/world-cup-2026-sticker-tracker/](https://jaimev365.github.io/world-cup-2026-sticker-tracker/)  
-**Free neutral URL (optional):** see [FREE_URL.md](./FREE_URL.md) — e.g. `wc2026-sticker-tracker.pages.dev` via Cloudflare Pages (no payment).
+**Live site:** [https://wc2026-sticker-tracker.pages.dev](https://wc2026-sticker-tracker.pages.dev)  
+**GitHub mirror:** [https://jaimev365.github.io/world-cup-2026-sticker-tracker/](https://jaimev365.github.io/world-cup-2026-sticker-tracker/)
 
 ## Features
 
