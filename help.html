@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en" data-mode="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="Step-by-step guide for the World Cup 2026 sticker collection tracker.">
+<title>Help — World Cup 2026 Sticker Tracker</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Arvo:wght@400;700&display=swap');
+  [data-mode="dark"] {
+    --bg:#0a0c10; --surface:#121820; --surface2:#1a2230; --border:#2a3548;
+    --accent:#FEF400; --accent2:#003DA5; --text:#FFFFFF; --muted:#9aa8bc;
+    --success:#5ee89a; --danger:#ff7a7a; --warning:#FEF400; --radius:10px;
+  }
+  [data-mode="bright"] {
+    --bg:#f2f5fb; --surface:#ffffff; --surface2:#e8eef8; --border:#c5d0e4;
+    --accent:#FEF400; --accent2:#003DA5; --text:#0c1a33; --muted:#5a6a85;
+    --success:#1b7a4a; --danger:#c62828; --warning:#8a6900; --radius:10px;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{background:var(--bg);color:var(--text);font-family:'Arvo',Georgia,serif;line-height:1.55;min-height:100vh}
+  a{color:var(--accent2)}
+  [data-mode="dark"] a{color:var(--accent)}
+  .wrap{max-width:720px;margin:0 auto;padding:20px 16px 48px}
+  .top{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:20px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+  .top h1{font-family:'Bebas Neue',sans-serif;font-size:28px;font-weight:400;letter-spacing:.06em}
+  .btn{display:inline-block;background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);color:var(--text);font-family:'Arvo',Georgia,serif;font-size:12px;font-weight:700;padding:8px 14px;text-decoration:none}
+  .btn-primary{background:var(--accent);color:#003DA5;border-color:var(--accent)}
+  .toc{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;margin-bottom:24px}
+  .toc h2{font-family:'Bebas Neue',sans-serif;font-size:16px;letter-spacing:.06em;margin-bottom:8px}
+  .toc ol{padding-left:20px;font-size:13px}
+  .toc li{margin:4px 0}
+  section{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-bottom:14px;scroll-margin-top:16px}
+  section h2{font-family:'Bebas Neue',sans-serif;font-size:22px;font-weight:400;letter-spacing:.06em;margin-bottom:10px;color:var(--text)}
+  section h3{font-family:'Bebas Neue',sans-serif;font-size:15px;font-weight:400;letter-spacing:.05em;margin:14px 0 6px;color:var(--accent2)}
+  [data-mode="dark"] section h3{color:var(--accent)}
+  p,li{font-size:13px;color:var(--text);margin-bottom:8px}
+  ul,ol{padding-left:20px;margin-bottom:8px}
+  li{margin-bottom:4px}
+  .muted{color:var(--muted);font-size:12px}
+  code{background:var(--surface2);border:1px solid var(--border);border-radius:4px;padding:1px 5px;font-size:12px}
+  .legend-row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
+  .leg-item{font-size:11px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:999px;padding:3px 9px}
+  .disclaimer-box{background:var(--surface2);border:1px dashed var(--border);border-radius:var(--radius);padding:12px;font-size:12px;color:var(--muted)}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1>Help &amp; guide</h1>
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      <a class="btn btn-primary" href="index.html">← Back to tracker</a>
+    </div>
+  </div>
+
+  <nav class="toc">
+    <h2>Contents</h2>
+    <ol>
+      <li><a href="#start">Getting started</a></li>
+      <li><a href="#add">Adding stickers</a></li>
+      <li><a href="#status">Missing, spares &amp; in transit</a></li>
+      <li><a href="#browse">Browsing your album</a></li>
+      <li><a href="#share">Sharing your lists</a></li>
+      <li><a href="#trade">Trade matcher</a></li>
+      <li><a href="#postal">Postal swaps</a></li>
+      <li><a href="#backup">Backup &amp; restore</a></li>
+      <li><a href="#disclaimer">Disclaimer</a></li>
+    </ol>
+  </nav>
+
+  <section id="start">
+    <h2>1. Getting started</h2>
+    <p>This is a free, unofficial tool to track your <strong>FIFA World Cup 2026 sticker album</strong> on your phone or computer. Everything saves automatically in your browser — no account, no login.</p>
+    <ol>
+      <li>Open the <a href="index.html">tracker</a>.</li>
+      <li>Your collection starts with a sample set of missing stickers (or import a backup if you have one).</li>
+      <li>Mark stickers as you get them — one tap at a time or in bulk.</li>
+      <li>Use <strong>Share list</strong> to send your needs or spares to swap partners.</li>
+      <li>Export a backup occasionally so you never lose progress.</li>
+    </ol>
+    <p class="muted">Tip: add this page to your home screen on mobile for quick access.</p>
+  </section>
+
+  <section id="add">
+    <h2>2. Adding stickers</h2>
+    <p>Each sticker can be: <strong>missing</strong>, <strong>in your album once</strong> (✓), or a <strong>spare</strong> (+1, +2… if you have extras).</p>
+
+    <h3>One by one on the album grid</h3>
+    <ul>
+      <li>Tap a sticker row to add one copy.</li>
+      <li>Right-click (or use the <strong>+</strong> button on the row) to add copies.</li>
+      <li>Use the <strong>−</strong> button to remove a copy after a trade.</li>
+      <li>Cycle: missing → ✓ in album → +1 spare → +2 spares…</li>
+    </ul>
+
+    <h3>Search by code</h3>
+    <p>Type a code like <code>MEX14</code> in the search box. You see its status instantly and can jump to that team.</p>
+
+    <h3>Bulk add</h3>
+    <p>Click <strong>＋ Add stickers</strong> at the top and paste or type many at once:</p>
+    <ul>
+      <li><code>MEX 1, 2, 3</code> — Mexico stickers 1, 2, and 3</li>
+      <li><code>ESP15 ARG7</code> — Spain 15 and Argentina 7</li>
+      <li><code>570, 571, 572</code> — by album sequence number</li>
+    </ul>
+    <p>Each entry adds <strong>one copy</strong>. Run it again if you got duplicates in the same pack.</p>
+  </section>
+
+  <section id="status">
+    <h2>3. Missing, spares &amp; in transit</h2>
+    <div class="legend-row">
+      <span class="leg-item">Missing — still need</span>
+      <span class="leg-item">✓ — one in album</span>
+      <span class="leg-item">+1 +2… — spares</span>
+      <span class="leg-item">📬 — expecting by post</span>
+    </div>
+    <ul>
+      <li><strong>Missing</strong> (red) — not in your album yet. Shown on your “I need these” share list.</li>
+      <li><strong>Spare</strong> (yellow) — extra copies beyond the one in your album. Shown on your spare share list.</li>
+      <li><strong>Expecting by post</strong> (orange) — someone is sending you this sticker. It is removed from your need list until it arrives or you write it off.</li>
+    </ul>
+    <p>After a swap, use <strong>−</strong> on spares you sent away. When a sticker arrives by post, confirm it in <strong>Postal swaps</strong>.</p>
+  </section>
+
+  <section id="browse">
+    <h2>4. Browsing your album</h2>
+    <ul>
+      <li><strong>All teams</strong> — full album in order.</li>
+      <li><strong>Incomplete / Complete</strong> — filter teams still missing stickers or fully done.</li>
+      <li><strong>10+ missing</strong> — teams that need the most work.</li>
+      <li><strong>Has dupes</strong> — teams where you have spares.</li>
+      <li><strong>Jump to</strong> — country pills to scroll straight to a team.</li>
+      <li>Click a team header to expand or collapse its sticker list.</li>
+    </ul>
+    <p>Progress bar at the top shows how much of the album is filled (stickers in album, excluding ones still in the post).</p>
+  </section>
+
+  <section id="share">
+    <h2>5. Sharing your lists</h2>
+    <p>Click <strong>📋 Share list</strong> to generate text you can paste into Facebook, WhatsApp, forums, etc.</p>
+    <ul>
+      <li><strong>I need these</strong> — stickers you are still missing (excludes ones already in the post).</li>
+      <li><strong>I have these spare</strong> — stickers you can trade away.</li>
+      <li><strong>Both</strong> — combined list for a full swap post.</li>
+    </ul>
+    <p>Format is simple: <code>ENG: 3, 7, 12</code> one team per line. Click <strong>Copy to clipboard</strong> and paste anywhere.</p>
+  </section>
+
+  <section id="trade">
+    <h2>6. Trade matcher</h2>
+    <p>Click <strong>🔄 Trade match</strong> when someone shares their lists with you. Three modes:</p>
+
+    <h3>Their NEED — check one list</h3>
+    <p>Paste only their need list. The tool shows which of <strong>your spares</strong> match — stickers you can offer them. Also shows your full missing list to share back.</p>
+
+    <h3>Their SPARE — check one list</h3>
+    <p>Paste only their spare list. Shows which stickers <strong>you still need</strong> from what they have. Also shows your spare list to offer in return.</p>
+
+    <h3>Fair swap — both lists</h3>
+    <p>Paste <strong>both</strong> their need and spare lists. The tool finds:</p>
+    <ul>
+      <li>Stickers you can send (your spares ∩ their needs)</li>
+      <li>Stickers you can receive (their spares ∩ your needs)</li>
+    </ul>
+    <p>Use the slider to pick a <strong>balanced count</strong> — same number each way (e.g. 10 for 10). Copy the send list, receive list, or both to message your swap partner.</p>
+  </section>
+
+  <section id="postal">
+    <h2>7. Postal swaps</h2>
+    <p>For swaps sent by mail, click <strong>📮 Postal swaps</strong> to track what is in transit.</p>
+
+    <h3>Create a swap</h3>
+    <ol>
+      <li>Click <strong>+ New swap</strong>.</li>
+      <li>Enter a name (swap partner), source (Facebook, friend, etc.), and date posted.</li>
+      <li><strong>I sent</strong> — list spares you put in the envelope. These leave your spare count immediately.</li>
+      <li><strong>Still expecting</strong> — list stickers they are sending you. These come off your need/share list while pending.</li>
+      <li>Save. The badge shows how many open swaps you have.</li>
+    </ol>
+
+    <h3>When post arrives</h3>
+    <ul>
+      <li><strong>Received</strong> — sticker arrived as expected; added to your album.</li>
+      <li><strong>Different</strong> — they sent a different sticker; you pick which one actually arrived.</li>
+      <li><strong>Write off</strong> — never arrived; sticker goes back on your need list.</li>
+      <li><strong>All arrived</strong> / <strong>Write off all pending</strong> — batch actions for the whole swap.</li>
+    </ul>
+    <p>When every expected line is settled, the swap moves to completed. You can edit swap details or lists later; removing sent stickers does not restore spares.</p>
+  </section>
+
+  <section id="backup">
+    <h2>8. Backup &amp; restore</h2>
+    <p>Open <strong>⚙ Data &amp; look</strong>:</p>
+    <ul>
+      <li><strong>Export backup</strong> — downloads a JSON file with your full collection: missing stickers, spare counts, postal swaps (including pending/received status), and theme.</li>
+      <li><strong>Import backup</strong> — restores everything on a new device or after clearing browser data.</li>
+      <li><strong>Dark / Bright mode</strong> — switch appearance; saved automatically.</li>
+    </ul>
+    <p class="muted">Export regularly. Browser storage can be cleared if you delete site data or switch browsers.</p>
+  </section>
+
+  <section id="disclaimer">
+    <h2>9. Disclaimer</h2>
+    <div class="disclaimer-box">
+      <p><strong>Unofficial fan tool — personal use only.</strong></p>
+      <p>This website is not affiliated with, endorsed by, or connected to FIFA, any sticker publisher, or any brand or team names used in the official album. It is a free hobby project to help collectors track their own personal albums.</p>
+      <p>All data stays in your browser. We do not collect, store, or sell your collection information. Team names and player names reflect the official album layout for personal tracking purposes.</p>
+      <p class="muted" style="margin-top:10px;margin-bottom:0">This is not legal advice. If you have concerns about trademarks or copyright, consult a qualified professional in your country.</p>
+    </div>
+  </section>
+
+  <p style="text-align:center;margin-top:20px"><a class="btn btn-primary" href="index.html">← Back to tracker</a></p>
+</div>
+</body>
+</html>
