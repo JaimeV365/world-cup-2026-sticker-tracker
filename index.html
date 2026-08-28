@@ -24,7 +24,7 @@
     --transit-border:rgba(255,171,76,.42);
     --transit-hover:rgba(255,171,76,.22);
     --ui-accent:#FEF400;
-    --ui-page:#b8c8dc;
+    --ui-page:#c5ccd6;
   }
   [data-mode="bright"] {
     --bg:#f2f5fb; --surface:#ffffff; --surface2:#e8eef8; --border:#c5d0e4;
@@ -135,6 +135,7 @@
   .tab-btn{background:none;border:none;border-bottom:2px solid transparent;color:var(--muted);cursor:pointer;font-family:'Bebas Neue',sans-serif;font-size:12px;font-weight:400;letter-spacing:.06em;padding:9px 12px;text-transform:uppercase;white-space:nowrap}
   .tab-btn:hover{color:var(--text)}
   .tab-btn.active{color:var(--ui-accent);border-bottom-color:var(--accent)}
+  [data-mode="dark"] .tab-btn.active{color:var(--text);border-bottom-color:var(--accent)}
   [data-mode="bright"] .tab-btn.active{color:var(--ui-accent);border-bottom-color:var(--ui-accent)}
 
   .country-bar{padding:8px 16px;background:var(--surface);border-bottom:1px solid var(--border);display:flex;gap:5px;flex-wrap:wrap;align-items:center}
@@ -166,8 +167,10 @@
   .team-heading{display:flex;align-items:center;gap:8px;min-width:0}
   .team-code{font-family:'Bebas Neue',sans-serif;font-size:20px;font-weight:400;letter-spacing:.06em;color:var(--text)}
   .team-name{font-size:10px;color:var(--muted);margin-top:1px}
-  .team-pages{display:inline-block;margin-top:3px;font-size:10px;font-weight:700;letter-spacing:.04em;color:var(--ui-accent);background:color-mix(in srgb,var(--accent) 14%,transparent);border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);border-radius:999px;padding:1px 7px}
-  .s-page{font-size:9px;color:var(--ui-page);flex-shrink:0;opacity:.95;min-width:28px;text-align:right}
+  .team-pages{display:inline-block;margin-top:3px;font-size:10px;font-weight:600;letter-spacing:.04em;color:var(--ui-page);background:color-mix(in srgb,var(--accent) 14%,transparent);border:1px solid color-mix(in srgb,var(--accent) 35%,transparent);border-radius:999px;padding:1px 7px}
+  [data-mode="dark"] .team-pages{background:var(--surface2);border-color:var(--border);color:var(--ui-page)}
+  [data-mode="bright"] .team-pages{color:var(--ui-accent)}
+  .s-page{font-size:9px;color:var(--ui-page);flex-shrink:0;opacity:.88;min-width:28px;text-align:right;font-weight:400}
   .header-right{text-align:right;flex-shrink:0}
   .miss-badge{font-size:10px;font-weight:600;padding:2px 7px;border-radius:999px;display:inline-block;margin-bottom:3px}
   .miss-badge.danger{background:var(--danger-bg);color:var(--danger)}
@@ -184,7 +187,7 @@
   .sticker-row.dupe{background:var(--warning-bg);border-left-color:var(--warning)}
   .sticker-row.dupe:hover{background:var(--dupe-hover)}
   .sticker-row.have{border-left-color:transparent}
-  .s-seq{font-family:'Bebas Neue',sans-serif;font-size:9px;color:var(--ui-page);min-width:28px;opacity:.7;flex-shrink:0}
+  .s-seq{font-family:'Bebas Neue',sans-serif;font-size:9px;color:var(--ui-page);min-width:28px;opacity:.65;flex-shrink:0}
   .s-num{font-family:'Bebas Neue',sans-serif;font-weight:400;font-size:13px;min-width:20px;color:var(--muted);flex-shrink:0}
   .sticker-row.miss .s-num{color:var(--danger)}
   .sticker-row.dupe .s-num{color:var(--warning)}
@@ -244,7 +247,9 @@
   .btn-badge .badge{position:absolute;top:-6px;right:-6px;background:var(--warning);color:var(--btn-ink);font-size:9px;font-weight:700;border-radius:999px;min-width:16px;height:16px;line-height:16px;text-align:center;padding:0 4px}
 
   .site-footer{font-size:10px;color:var(--muted);text-align:center;padding:20px 16px 28px;line-height:1.55;border-top:1px solid var(--border);margin-top:8px}
-  .site-footer a{color:var(--ui-accent)}
+  .site-footer a{color:var(--ui-page)}
+  [data-mode="dark"] .site-footer a{color:var(--ui-page)}
+  [data-mode="dark"] .site-footer a:hover{color:var(--text)}
   .site-footer-links{display:flex;gap:12px;justify-content:center;flex-wrap:wrap;margin-bottom:8px}
 
   @media(max-width:600px){
