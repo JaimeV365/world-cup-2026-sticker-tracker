@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="description" content="Step-by-step guide for the World Cup 2026 sticker collection tracker.">
+<meta name="description" content="Step-by-step guide and privacy info for the World Cup 2026 sticker collection tracker.">
 <title>Help — World Cup 2026 Sticker Tracker</title>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Arvo:wght@400;700&display=swap');
@@ -45,6 +45,8 @@
   .legend-row{display:flex;flex-wrap:wrap;gap:8px;margin:10px 0}
   .leg-item{font-size:11px;color:var(--muted);background:var(--surface2);border:1px solid var(--border);border-radius:999px;padding:3px 9px}
   .disclaimer-box{background:var(--surface2);border:1px dashed var(--border);border-radius:var(--radius);padding:12px;font-size:12px;color:var(--muted)}
+  .privacy-box{background:var(--surface2);border:1px solid color-mix(in srgb,var(--success) 35%,var(--border));border-radius:var(--radius);padding:12px;font-size:13px}
+  .privacy-box ul{margin-bottom:0}
 </style>
 </head>
 <body>
@@ -67,6 +69,7 @@
       <li><a href="#trade">Trade matcher</a></li>
       <li><a href="#postal">Postal swaps</a></li>
       <li><a href="#backup">Backup &amp; restore</a></li>
+      <li><a href="#about">About &amp; privacy</a></li>
       <li><a href="#disclaimer">Disclaimer</a></li>
     </ol>
   </nav>
@@ -202,8 +205,26 @@
     <p class="muted">Export regularly. Browser storage can be cleared if you delete site data or switch browsers.</p>
   </section>
 
+  <section id="about">
+    <h2>9. About &amp; privacy</h2>
+    <p>This tool is built to be simple, private, and usable without an account.</p>
+    <div class="privacy-box">
+      <ul>
+        <li><strong>Your data stays on your device.</strong> Your collection is saved in your browser’s local storage. Nothing is uploaded to our servers — there are no servers for your collection data.</li>
+        <li><strong>No accounts or login.</strong> Open the page and start tracking. No email, no password, no sign-up.</li>
+        <li><strong>No analytics or trackers.</strong> We do not use Google Analytics, Facebook pixels, or similar tracking scripts. We are not watching what you click or which stickers you have.</li>
+        <li><strong>No ads.</strong> The page is a single free tool, not a commercial product.</li>
+        <li><strong>Works offline after the first visit.</strong> Once loaded, the tracker runs without internet. Your changes still save locally. (Team flags may show emoji instead of images when offline.)</li>
+        <li><strong>You control backups.</strong> Export creates a file on <em>your</em> device. Import reads a file <em>you</em> choose. We never see that file.</li>
+      </ul>
+    </div>
+    <h3>Small optional internet requests</h3>
+    <p class="muted">When you are online, the page may load fonts from Google Fonts and country flag images from a public CDN. These are cosmetic only — they do not send your collection data anywhere. The core tracker does not need them to work.</p>
+    <p class="muted">GitHub hosts the static website files (HTML/CSS/JS). That is normal web hosting — like any site you visit — not storage of your personal collection.</p>
+  </section>
+
   <section id="disclaimer">
-    <h2>9. Disclaimer</h2>
+    <h2>10. Disclaimer</h2>
     <div class="disclaimer-box">
       <p><strong>Unofficial fan tool — personal use only.</strong></p>
       <p>This website is not affiliated with, endorsed by, or connected to FIFA, any sticker publisher, or any brand or team names used in the official album. It is a free hobby project to help collectors track their own personal albums.</p>
