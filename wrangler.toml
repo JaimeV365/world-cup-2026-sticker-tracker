@@ -1,0 +1,8 @@
+# Cloudflare Pages (optional static config)
+# See FREE_URL.md for dashboard setup — connect this repo to Cloudflare Pages.
+# Project name: wc2026-sticker-tracker
+# Build output directory: .
+# Build command: (none)
+
+name = "wc2026-sticker-tracker"
+pages_build_output_dir = "."
