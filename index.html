@@ -344,6 +344,7 @@
     <button type="button" class="share-tab" onclick="setShareTab('both',this)">Both</button>
   </div>
   <div class="share-output" id="shareOutput"></div>
+  <p style="font-size:10px;color:var(--muted);margin-top:6px">Copied lists include a link to this tool at the bottom.</p>
   <div class="share-actions">
     <button type="button" class="btn btn-add" onclick="copyShare()">Copy to clipboard</button>
     <button type="button" class="btn btn-share" onclick="togglePanel('share')">Close</button>
@@ -1968,11 +1969,13 @@ function buildShare() {
       lines.push(prefix + dupeCards.join(', '));
     }
   });
-  document.getElementById('shareOutput').textContent = lines.join('\n') || '(none)';
+  let text = lines.join('\n') || '(none)';
+  if (text !== '(none)') text += LIST_ATTRIBUTION;
+  document.getElementById('shareOutput').textContent = text;
 }
 
 function copyShare() {
-  const text = textForSharedList(document.getElementById('shareOutput').textContent);
+  const text = document.getElementById('shareOutput').textContent;
   navigator.clipboard.writeText(text).then(() => {
     const c = document.getElementById('copyConfirm');
     c.style.display = 'block';
