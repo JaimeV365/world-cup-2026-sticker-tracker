@@ -308,7 +308,7 @@
       <button type="button" class="btn btn-share" id="btnTradeMatch" onclick="togglePanel('trade')" style="border-color:var(--success);color:var(--success)">🔄 Trade match</button>
       <button type="button" class="btn btn-share btn-badge" id="postalBtn" onclick="togglePanel('postal')">📮 Postal swaps<span class="badge" id="postalBadge" style="display:none">0</span></button>
       <button type="button" class="btn btn-share" id="btnShareList" onclick="togglePanel('share')">📋 Share list</button>
-      <button type="button" class="btn btn-add" id="btnBackup" onclick="exportBackup()" title="Download a full JSON backup of your collection">⬇ Backup</button>
+      <button type="button" class="btn btn-add" id="btnBackup" onclick="exportBackup()" title="Download a full JSON backup of your collection">🗄️ Backup</button>
       <button type="button" class="btn btn-share" id="btnDataLook" onclick="togglePanel('data')">⚙ Data &amp; look</button>
       <button type="button" class="btn btn-share" id="btnTour" onclick="startTour(true)">🧭 Tour</button>
       <a class="btn btn-share" href="help.html" style="text-decoration:none">❓ Help</a>
@@ -317,7 +317,7 @@
   </div>
   <div class="backup-banner" id="backupBanner">
     <span id="backupBannerMsg"><strong>Protect your progress:</strong> this browser can clear site data. Export a backup file you keep somewhere safe.</span>
-    <button type="button" class="btn btn-add" onclick="exportBackup()">⬇ Export backup now</button>
+    <button type="button" class="btn btn-add" onclick="exportBackup()">🗄️ Export backup now</button>
     <button type="button" class="btn btn-share" onclick="dismissBackupBanner()">Remind me later</button>
   </div>
   <div class="stats-row" id="statsRow" data-tour="progress"></div>
@@ -402,10 +402,10 @@
   <h3>⚙ Data &amp; look</h3>
   <p><strong>Auto-save:</strong> your collection is stored in this browser whenever you change it. It survives refresh and reopening the file on the same device/browser — but browsers can wipe site data. Keep a backup file.</p>
 
-  <h3 style="margin-top:12px" id="backupSection">⬇ Backup (important)</h3>
+  <h3 style="margin-top:12px" id="backupSection">🗄️ Backup (important)</h3>
   <div class="hint-box">Export downloads a full JSON snapshot — missing stickers, spare counts, postal swaps, and theme. Import restores everything on another device or after clearing browser data. The yellow <strong>Backup</strong> button in the header does the same export.</div>
   <div class="file-row">
-    <button type="button" class="btn btn-add" onclick="exportBackup()">⬇ Export backup</button>
+    <button type="button" class="btn btn-add" onclick="exportBackup()">🗄️ Export backup</button>
     <button type="button" class="btn btn-share" onclick="document.getElementById('importFile').click()">⬆ Import backup</button>
     <input type="file" id="importFile" accept="application/json,.json" style="display:none" onchange="importBackup(event)">
   </div>
