@@ -5,6 +5,16 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Step-by-step guide and privacy info for the World Cup 2026 sticker collection tracker.">
 <title>Help — World Cup 2026 Sticker Tracker</title>
+<script>
+(function () {
+  try {
+    var light = matchMedia('(prefers-color-scheme: light)').matches;
+    document.documentElement.setAttribute('data-mode', light ? 'bright' : 'dark');
+  } catch (e) {
+    document.documentElement.setAttribute('data-mode', 'dark');
+  }
+})();
+</script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Arvo:wght@400;700&display=swap');
   [data-mode="dark"] {
@@ -68,7 +78,7 @@
       <li><a href="#share">Sharing your lists</a></li>
       <li><a href="#trade">Trade matcher</a></li>
       <li><a href="#postal">Postal swaps</a></li>
-      <li><a href="#backup">Backup &amp; restore</a></li>
+      <li><a href="#backup">Backup &amp; appearance</a></li>
       <li><a href="#about">About &amp; privacy</a></li>
       <li><a href="#disclaimer">Disclaimer</a></li>
     </ol>
@@ -78,13 +88,13 @@
     <h2>1. Getting started</h2>
     <p>This is a free, unofficial tool to track your <strong>FIFA World Cup 2026 sticker album</strong> on your phone or computer. Everything saves automatically in your browser — no account, no login.</p>
     <ol>
-      <li>Open the <a href="index.html">tracker</a>.</li>
-      <li>Your collection starts with a sample set of missing stickers (or import a backup if you have one).</li>
-      <li>Mark stickers as you get them — one tap at a time or in bulk.</li>
-      <li>Use <strong>Share list</strong> to send your needs or spares to swap partners.</li>
-      <li>Export a backup occasionally so you never lose progress.</li>
+      <li>Open the <a href="index.html">tracker</a>. New visitors get a short <strong>Tour</strong> (you can replay it anytime from the header).</li>
+      <li>First visit loads a starter collection so you can explore. Prefer a blank album? Use <strong>Data &amp; look → Start fresh</strong>. Prefer your own save? <strong>Import backup</strong>.</li>
+      <li>Mark stickers as you get them — tap on the grid, or paste a whole list with <strong>＋ Add stickers</strong>.</li>
+      <li>Use <strong>Share list</strong> and <strong>Trade match</strong> when swapping with others.</li>
+      <li>Export a <strong>Backup</strong> so you never lose progress if this browser clears site data.</li>
     </ol>
-    <p class="muted">Tip: add this page to your home screen on mobile for quick access.</p>
+    <p class="muted">Tip: add the tracker to your home screen on mobile for quick access.</p>
   </section>
 
   <section id="add">
@@ -93,9 +103,8 @@
 
     <h3>One by one on the album grid</h3>
     <ul>
-      <li>Tap a sticker row to add one copy.</li>
-      <li>Right-click (or use the <strong>+</strong> button on the row) to add copies.</li>
-      <li>Use the <strong>−</strong> button to remove a copy after a trade.</li>
+      <li>Tap a sticker row (or its <strong>+</strong>) to add one copy.</li>
+      <li>Use <strong>−</strong> or right-click to remove one copy (e.g. after you trade a spare away).</li>
       <li>Cycle: missing → ✓ in album → +1 spare → +2 spares…</li>
     </ul>
 
@@ -103,13 +112,13 @@
     <p>Type a code like <code>MEX14</code> in the search box. You see its status instantly and can jump to that team.</p>
 
     <h3>Bulk add</h3>
-    <p>Click <strong>＋ Add stickers</strong> at the top and paste or type many at once:</p>
+    <p>Click <strong>＋ Add stickers</strong> and paste or type many at once. Each code adds the number of copies you enter:</p>
     <ul>
-      <li><code>MEX 1, 2, 3</code> — Mexico stickers 1, 2, and 3</li>
+      <li><code>MEX 1, 2, 3</code> — Mexico stickers 1, 2, and 3 (one each)</li>
       <li><code>ESP15 ARG7</code> — Spain 15 and Argentina 7</li>
+      <li><code>MEX14 x2</code> or list <code>MEX14</code> twice — two copies (✓ then +1 spare)</li>
       <li><code>570, 571, 572</code> — by album sequence number</li>
     </ul>
-    <p>Each entry adds <strong>one copy</strong>. Run it again if you got duplicates in the same pack.</p>
   </section>
 
   <section id="status">
@@ -118,91 +127,91 @@
       <span class="leg-item">Missing — still need</span>
       <span class="leg-item">✓ — one in album</span>
       <span class="leg-item">+1 +2… — spares</span>
-      <span class="leg-item">📬 — expecting by post</span>
+      <span class="leg-item">In transit — expecting by post</span>
+      <span class="leg-item">★ — foil sticker</span>
     </div>
     <ul>
-      <li><strong>Missing</strong> (red) — not in your album yet. Shown on your “I need these” share list.</li>
-      <li><strong>Spare</strong> (yellow) — extra copies beyond the one in your album. Shown on your spare share list.</li>
-      <li><strong>Expecting by post</strong> (orange) — someone is sending you this sticker. It is removed from your need list until it arrives or you write it off.</li>
+      <li><strong>Missing</strong> — not in your album yet. Shown on your “I need these” share list.</li>
+      <li><strong>Spare</strong> — extras beyond the one stuck in the album. Shown on your spare share list.</li>
+      <li><strong>Expecting by post</strong> — someone is sending you this sticker. It stays off your need list until it arrives or you write it off.</li>
+      <li><strong>Foil (★)</strong> — shiny special stickers in the real album (team logos, some specials). Tracking works the same as any other sticker.</li>
     </ul>
-    <p>After a swap, use <strong>−</strong> on spares you sent away. When a sticker arrives by post, confirm it in <strong>Postal swaps</strong>.</p>
+    <p>After a swap, use <strong>−</strong> on spares you sent away. When mail arrives, confirm it in <strong>Postal swaps</strong>.</p>
   </section>
 
   <section id="browse">
     <h2>4. Browsing your album</h2>
     <ul>
-      <li><strong>All teams</strong> — full album in order.</li>
-      <li><strong>Incomplete / Complete</strong> — filter teams still missing stickers or fully done.</li>
-      <li><strong>10+ missing</strong> — teams that need the most work.</li>
-      <li><strong>Has dupes</strong> — teams where you have spares.</li>
-      <li><strong>Jump to</strong> — country pills to scroll straight to a team.</li>
-      <li>Click a team header to expand or collapse its sticker list.</li>
+      <li>Teams follow <strong>album order</strong>, including specials (opening pages, centre spread, World Cup History at the end).</li>
+      <li>Lists start <strong>expanded</strong>; click a team header to collapse or expand.</li>
+      <li><strong>All / Incomplete / Complete / 10+ missing / Has dupes</strong> — filter what you see.</li>
+      <li><strong>Jump to</strong> — flag pills to open a team quickly.</li>
+      <li>Album <strong>page numbers</strong> appear on teams and some stickers so you can find them in the book.</li>
     </ul>
-    <p>Progress bar at the top shows how much of the album is filled (stickers in album, excluding ones still in the post).</p>
+    <p>The bar at the top shows how much of the album you already have in hand. Stickers still expected by post are not counted as complete until they arrive.</p>
   </section>
 
   <section id="share">
     <h2>5. Sharing your lists</h2>
-    <p>Click <strong>📋 Share list</strong> to generate text you can paste into Facebook, WhatsApp, forums, etc.</p>
+    <p>Click <strong>📋 Share list</strong> to generate text for WhatsApp, Facebook, forums, etc.</p>
     <ul>
-      <li><strong>I need these</strong> — stickers you are still missing (excludes ones already in the post).</li>
-      <li><strong>I have these spare</strong> — stickers you can trade away.</li>
+      <li><strong>I need these</strong> — still missing (excludes stickers already expected by post).</li>
+      <li><strong>I have these spare</strong> — extras you can trade.</li>
       <li><strong>Both</strong> — combined list for a full swap post.</li>
     </ul>
-    <p>Format is simple: <code>ENG: 3, 7, 12</code> one team per line. Click <strong>Copy to clipboard</strong> and paste anywhere.</p>
+    <p>Format is simple: <code>ENG: 3, 7, 12</code> one team per line. Copied lists end with a short <code>— via …</code> line pointing to this tool so partners can find it.</p>
   </section>
 
   <section id="trade">
     <h2>6. Trade matcher</h2>
-    <p>Click <strong>🔄 Trade match</strong> when someone shares their lists with you. Three modes:</p>
+    <p>Click <strong>🔄 Trade match</strong> when someone shares their lists. Three modes:</p>
 
-    <h3>Their NEED — check one list</h3>
-    <p>Paste only their need list. The tool shows which of <strong>your spares</strong> match — stickers you can offer them. Also shows your full missing list to share back.</p>
+    <h3>Their NEED</h3>
+    <p>Paste their need list. See how many you can cover (<strong>all</strong>, or <strong>X of Y</strong> with how many still unmatched) and which of your spares to offer. You can also copy your missing list to send back.</p>
 
-    <h3>Their SPARE — check one list</h3>
-    <p>Paste only their spare list. Shows which stickers <strong>you still need</strong> from what they have. Also shows your spare list to offer in return.</p>
+    <h3>Their SPARE</h3>
+    <p>Paste their spare list. See which of those stickers you still need, then copy your spare list to offer in return.</p>
 
-    <h3>Fair swap — both lists</h3>
-    <p>Paste <strong>both</strong> their need and spare lists. The tool finds:</p>
-    <ul>
-      <li>Stickers you can send (your spares ∩ their needs)</li>
-      <li>Stickers you can receive (their spares ∩ your needs)</li>
-    </ul>
-    <p>Use the slider to pick a <strong>balanced count</strong> — same number each way (e.g. 10 for 10). Copy the send list, receive list, or both to message your swap partner.</p>
+    <h3>Fair swap</h3>
+    <p>Paste <strong>both</strong> lists. The tool shows coverage both ways and a slider for a balanced swap (same number each way). Copy send, receive, or both lists for your partner.</p>
   </section>
 
   <section id="postal">
     <h2>7. Postal swaps</h2>
-    <p>For swaps sent by mail, click <strong>📮 Postal swaps</strong> to track what is in transit.</p>
+    <p>For swaps by mail, use <strong>📮 Postal swaps</strong>.</p>
 
     <h3>Create a swap</h3>
     <ol>
       <li>Click <strong>+ New swap</strong>.</li>
-      <li>Enter a name (swap partner), source (Facebook, friend, etc.), and date posted.</li>
-      <li><strong>I sent</strong> — list spares you put in the envelope. These leave your spare count immediately.</li>
-      <li><strong>Still expecting</strong> — list stickers they are sending you. These come off your need/share list while pending.</li>
-      <li>Save. The badge shows how many open swaps you have.</li>
+      <li>Enter a name, where you found them, and date posted.</li>
+      <li><strong>I sent</strong> — spares in the envelope (must be spares you actually have; they leave your spare count immediately).</li>
+      <li><strong>Still expecting</strong> — stickers they are sending you (come off your need list while pending). You’ll be warned if you already own them or already expect them in another open swap.</li>
+      <li>Save. The badge shows how many open swaps you have. You’ll also get a backup reminder.</li>
     </ol>
 
     <h3>When post arrives</h3>
     <ul>
-      <li><strong>Received</strong> — sticker arrived as expected; added to your album.</li>
-      <li><strong>Different</strong> — they sent a different sticker; you pick which one actually arrived.</li>
-      <li><strong>Write off</strong> — never arrived; sticker goes back on your need list.</li>
-      <li><strong>All arrived</strong> / <strong>Write off all pending</strong> — batch actions for the whole swap.</li>
+      <li><strong>Received</strong> — arrived as expected; added to your album.</li>
+      <li><strong>Different</strong> — they sent something else; you record what arrived.</li>
+      <li><strong>Write off</strong> — never arrived; back on your need list.</li>
+      <li><strong>All arrived</strong> / <strong>Write off all pending</strong> — batch actions.</li>
     </ul>
-    <p>When every expected line is settled, the swap moves to completed. You can edit swap details or lists later; removing sent stickers does not restore spares.</p>
+
+    <h3>Delete a swap</h3>
+    <p>Open the swap and choose <strong>Delete &amp; revert</strong>. The tool undoes only what that swap changed (restore sent spares, put pending stickers back on your need list, remove copies that were marked received/unexpected). Written-off lines are left as they are.</p>
   </section>
 
   <section id="backup">
-    <h2>8. Backup &amp; restore</h2>
-    <p>Open <strong>⚙ Data &amp; look</strong>:</p>
+    <h2>8. Backup &amp; appearance</h2>
+    <p>Your collection auto-saves in this browser. Browsers can still wipe site data — keep a file backup.</p>
     <ul>
-      <li><strong>Export backup</strong> — downloads a JSON file with your full collection: missing stickers, spare counts, postal swaps (including pending/received status), and theme.</li>
-      <li><strong>Import backup</strong> — restores everything on a new device or after clearing browser data.</li>
-      <li><strong>Dark / Bright mode</strong> — switch appearance; saved automatically.</li>
+      <li><strong>🗄️ Backup</strong> (header) — downloads a full JSON snapshot: missing stickers, spare counts, postal swaps, and theme.</li>
+      <li><strong>Import backup</strong> — in <strong>⚙ Data &amp; look</strong>; restores everything on another device or after clearing data.</li>
+      <li><strong>Reminders</strong> — after you save a postal swap, and after every 5 stickers you bulk-add. <em>Remind me later</em> hides the banner until the next of those events.</li>
+      <li><strong>Appearance</strong> — Auto (follow your device), Dark, or Bright.</li>
+      <li><strong>Tour</strong> — short guided overview; also under Data &amp; look.</li>
+      <li><strong>Start fresh / Restore starter</strong> — reset options (export first if unsure).</li>
     </ul>
-    <p class="muted">Export regularly. Browser storage can be cleared if you delete site data or switch browsers.</p>
   </section>
 
   <section id="about">
@@ -210,18 +219,17 @@
     <p>This tool is built to be simple, private, and usable without an account.</p>
     <div class="privacy-box">
       <ul>
-        <li><strong>Your data stays on your device.</strong> Your collection is saved in your browser’s local storage. Nothing is uploaded to our servers — there are no servers for your collection data.</li>
-        <li><strong>No accounts or login.</strong> Open the page and start tracking. No email, no password, no sign-up.</li>
-        <li><strong>No analytics or trackers.</strong> We do not use Google Analytics, Facebook pixels, or similar tracking scripts. We are not watching what you click or which stickers you have.</li>
-        <li><strong>No ads.</strong> The page is a single free tool, not a commercial product.</li>
-        <li><strong>Works offline after the first visit.</strong> Once loaded, the tracker runs without internet. Your changes still save locally. (Team flags may show emoji instead of images when offline.)</li>
-        <li><strong>You control backups.</strong> Export creates a file on <em>your</em> device. Import reads a file <em>you</em> choose. We never see that file.</li>
-        <li><strong>Share lists can include a tool link.</strong> When you copy a need/spare or trade list, a short line at the bottom points others to this tracker — only in the text you copy and share.</li>
+        <li><strong>Your data stays on your device.</strong> Your collection is saved in your browser’s local storage. Your sticker list is not uploaded to a collection database — there isn’t one.</li>
+        <li><strong>No accounts or login.</strong> Open the page and start. No email, no password, no sign-up.</li>
+        <li><strong>No ads.</strong> A free fan tool, not a commercial product.</li>
+        <li><strong>No analytics scripts on the page.</strong> We do not run Google Analytics, Facebook pixels, or similar trackers that watch what you click or which stickers you have.</li>
+        <li><strong>Works offline after the first visit.</strong> Once loaded, tracking and saving work without internet. Flags may fall back to emoji when offline.</li>
+        <li><strong>You control backups.</strong> Export creates a file on your device. Import reads a file you choose.</li>
+        <li><strong>Shared lists.</strong> When you copy a need, spare, or trade list, a short line at the bottom can point others to this tool — only in the text you choose to paste.</li>
       </ul>
     </div>
-    <h3>Small optional internet requests</h3>
-    <p class="muted">When you are online, the page may load fonts and country flag images from public CDNs. These are cosmetic only — they do not send your collection data anywhere. The core tracker does not need them to work.</p>
-    <p class="muted">The website itself is just the public tool (the page and its code). Your personal collection never leaves this browser unless you export or copy a list yourself.</p>
+    <h3>What leaves the browser?</h3>
+    <p class="muted">When you are online, the page may load fonts and country flag images from public CDNs. Those requests are cosmetic and do not include your collection. Your personal collection leaves this browser only if <em>you</em> export a backup or copy/share a list.</p>
   </section>
 
   <section id="disclaimer">
@@ -229,7 +237,7 @@
     <div class="disclaimer-box">
       <p><strong>Unofficial fan tool — personal use only.</strong></p>
       <p>This website is not affiliated with, endorsed by, or connected to FIFA, any sticker publisher, or any brand or team names used in the official album. It is a free hobby project to help collectors track their own personal albums.</p>
-      <p>All data stays in your browser. We do not collect, store, or sell your collection information. Team names and player names reflect the official album layout for personal tracking purposes.</p>
+      <p>All collection data stays in your browser unless you export or share it yourself. Team and player names reflect the album layout for personal tracking only.</p>
       <p class="muted" style="margin-top:10px;margin-bottom:0">This is not legal advice. If you have concerns about trademarks or copyright, consult a qualified professional in your country.</p>
     </div>
   </section>
