@@ -2868,9 +2868,9 @@ try {
 render();
 renderPostalPanel();
 celebrateEnabled = true;
-if (isFirstVisit) {
-  setTimeout(() => startTour(false), 700);
-}
+// Auto-start for anyone who hasn't finished/skipped the tour yet (not only
+// a blank localStorage — first load already saves the starter collection).
+setTimeout(() => startTour(false), 700);
 </script>
 </body>
 </html>
