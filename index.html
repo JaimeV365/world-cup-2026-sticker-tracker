@@ -229,8 +229,9 @@
   #celebrateCanvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:10000}
   .tour-root{position:fixed;inset:0;z-index:10050;display:none}
   .tour-root.show{display:block}
-  .tour-dim{position:absolute;inset:0;background:transparent;pointer-events:auto}
-  .tour-spot{position:absolute;border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.55),0 0 0 3px var(--accent);pointer-events:none;transition:all .25s ease}
+  /* Solid dim layer — avoid huge box-shadow (can paint a black screen in some mobile browsers, e.g. Brave) */
+  .tour-dim{position:absolute;inset:0;background:rgba(0,0,0,.55);pointer-events:auto}
+  .tour-spot{position:absolute;border-radius:12px;border:3px solid var(--accent);box-shadow:0 0 0 4px color-mix(in srgb,var(--accent) 35%,transparent);pointer-events:none;transition:top .2s ease,left .2s ease,width .2s ease,height .2s ease;z-index:1}
   .tour-card{position:absolute;z-index:2;width:min(340px,calc(100vw - 24px));background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow);color:var(--text)}
   .tour-card h4{font-family:'Bebas Neue',sans-serif;font-weight:400;font-size:20px;letter-spacing:.04em;margin:0 0 6px;color:var(--title-accent)}
   .tour-card p{font-size:13px;line-height:1.45;margin:0 0 12px;color:var(--text)}
@@ -1337,7 +1338,7 @@ function exportBackup() {
     stickersSinceBackup: 0,
     nudgeDismissedUntil: 0
   });
-  showToast('⬇ Backup downloaded — keep this file safe');
+  showToast('🗄️ Backup downloaded — keep this file safe');
 }
 
 function importBackup(ev) {
@@ -2493,27 +2494,38 @@ function positionTourUI() {
   if (!root || !step) return;
   const el = tourTargetEl(step);
   const pad = 8;
+  const narrow = window.innerWidth < 520;
   let top = 80, left = 16, width = 200, height = 40;
   if (el) {
     const r = el.getBoundingClientRect();
     top = Math.max(8, r.top - pad);
     left = Math.max(8, r.left - pad);
-    width = r.width + pad * 2;
-    height = r.height + pad * 2;
-    el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+    width = Math.max(24, r.width + pad * 2);
+    height = Math.max(24, r.height + pad * 2);
+    try { el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' }); } catch (e) { /* ignore */ }
+    spot.style.display = 'block';
+    spot.style.top = top + 'px';
+    spot.style.left = left + 'px';
+    spot.style.width = width + 'px';
+    spot.style.height = height + 'px';
+  } else {
+    spot.style.display = 'none';
   }
-  spot.style.top = top + 'px';
-  spot.style.left = left + 'px';
-  spot.style.width = width + 'px';
-  spot.style.height = height + 'px';
 
   const cardW = Math.min(340, window.innerWidth - 24);
-  let cardTop = top + height + 14;
-  let cardLeft = Math.min(left, window.innerWidth - cardW - 12);
-  if (cardTop + 200 > window.innerHeight) {
-    cardTop = Math.max(12, top - 210);
+  let cardTop, cardLeft;
+  if (narrow || !el) {
+    // Keep the card centred and tappable on phones (avoids off-screen / covered UI)
+    cardTop = Math.max(24, Math.round(window.innerHeight * 0.28));
+    cardLeft = Math.round((window.innerWidth - cardW) / 2);
+  } else {
+    cardTop = top + height + 14;
+    cardLeft = Math.min(left, window.innerWidth - cardW - 12);
+    if (cardTop + 200 > window.innerHeight) {
+      cardTop = Math.max(12, top - 210);
+    }
+    if (cardLeft < 12) cardLeft = 12;
   }
-  if (cardLeft < 12) cardLeft = 12;
   card.style.width = cardW + 'px';
   card.style.top = cardTop + 'px';
   card.style.left = cardLeft + 'px';
