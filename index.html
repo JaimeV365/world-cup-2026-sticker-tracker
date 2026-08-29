@@ -5,6 +5,20 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="description" content="Unofficial personal tracker for the FIFA World Cup 2026 sticker album. Track missing stickers, spares, and postal swaps in your browser.">
 <title>World Cup 2026 — Sticker Collection Tracker</title>
+<script>
+(function () {
+  var mode = 'dark';
+  try {
+    var d = JSON.parse(localStorage.getItem('wc2026-sticker-tracker-v1') || 'null');
+    var pref = d && d.colorModePref;
+    if (pref === 'bright' || pref === 'dark') mode = pref;
+    else mode = matchMedia('(prefers-color-scheme: light)').matches ? 'bright' : 'dark';
+  } catch (e) {
+    mode = matchMedia('(prefers-color-scheme: light)').matches ? 'bright' : 'dark';
+  }
+  document.documentElement.setAttribute('data-mode', mode);
+})();
+</script>
 <style>
   @import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Arvo:wght@400;700&display=swap');
 
@@ -212,6 +226,24 @@
   .empty{text-align:center;color:var(--muted);padding:30px;font-size:13px}
   .expand-icon{color:var(--muted);font-size:11px;margin-left:4px}
   #toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--surface);border:1px solid var(--hero-line);border-radius:var(--radius);padding:10px 16px;font-size:12px;color:var(--text);z-index:999;max-width:90vw;text-align:center;display:none;box-shadow:var(--shadow)}
+  #celebrateCanvas{position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:10000}
+  .tour-root{position:fixed;inset:0;z-index:10050;display:none}
+  .tour-root.show{display:block}
+  .tour-dim{position:absolute;inset:0;background:transparent;pointer-events:auto}
+  .tour-spot{position:absolute;border-radius:12px;box-shadow:0 0 0 9999px rgba(0,0,0,.55),0 0 0 3px var(--accent);pointer-events:none;transition:all .25s ease}
+  .tour-card{position:absolute;z-index:2;width:min(340px,calc(100vw - 24px));background:var(--surface);border:1px solid var(--border);border-radius:14px;padding:14px 16px;box-shadow:var(--shadow);color:var(--text)}
+  .tour-card h4{font-family:'Bebas Neue',sans-serif;font-weight:400;font-size:20px;letter-spacing:.04em;margin:0 0 6px;color:var(--title-accent)}
+  .tour-card p{font-size:13px;line-height:1.45;margin:0 0 12px;color:var(--text)}
+  .tour-card .tour-step{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:4px}
+  .tour-actions{display:flex;gap:8px;flex-wrap:wrap;align-items:center}
+  .tour-actions .btn{font-size:11px;padding:6px 12px;min-height:30px}
+  .tour-arrow{position:absolute;width:0;height:0;border:10px solid transparent;filter:drop-shadow(0 1px 0 var(--border))}
+  .save-status-btn{background:none;border:none;padding:0;cursor:pointer;font:inherit;text-align:left}
+  .save-status-btn:hover{text-decoration:underline}
+  .backup-banner{display:none;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 10px;padding:8px 12px;border-radius:var(--radius);background:color-mix(in srgb,var(--warning) 12%,var(--surface));border:1px solid color-mix(in srgb,var(--warning) 40%,var(--border));font-size:12px;color:var(--text)}
+  .backup-banner.show{display:flex}
+  .backup-banner strong{color:var(--warning)}
+  .backup-banner .btn{font-size:11px;padding:4px 10px;min-height:28px}
   .postal-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px}
   .postal-card h4{margin:0 0 4px;font-size:13px;font-weight:600}
   .postal-meta{font-size:10px;color:var(--muted);margin-bottom:6px;line-height:1.5}
@@ -269,20 +301,27 @@
     <div class="hero-title">
       <h1>World Cup <span>2026</span> Stickers</h1>
       <p>Personal collection tracker</p>
-      <div class="save-status ok" id="saveStatus">● Saved on this device</div>
+      <div class="save-status ok save-status-btn" id="saveStatus" role="button" tabindex="0" onclick="openBackupPanel()" onkeydown="if(event.key==='Enter'||event.key===' '){event.preventDefault();openBackupPanel()}">● Saved on this device · Backup</div>
     </div>
     <div style="display:flex;gap:6px;margin-left:auto;flex-wrap:wrap">
-      <button type="button" class="btn btn-add" onclick="togglePanel('add')">＋ Add stickers</button>
-      <button type="button" class="btn btn-share" onclick="togglePanel('trade')" style="border-color:var(--success);color:var(--success)">🔄 Trade match</button>
+      <button type="button" class="btn btn-add" id="btnAddStickers" onclick="togglePanel('add')">＋ Add stickers</button>
+      <button type="button" class="btn btn-share" id="btnTradeMatch" onclick="togglePanel('trade')" style="border-color:var(--success);color:var(--success)">🔄 Trade match</button>
       <button type="button" class="btn btn-share btn-badge" id="postalBtn" onclick="togglePanel('postal')">📮 Postal swaps<span class="badge" id="postalBadge" style="display:none">0</span></button>
-      <button type="button" class="btn btn-share" onclick="togglePanel('share')">📋 Share list</button>
-      <button type="button" class="btn btn-share" onclick="togglePanel('data')">⚙ Data &amp; look</button>
+      <button type="button" class="btn btn-share" id="btnShareList" onclick="togglePanel('share')">📋 Share list</button>
+      <button type="button" class="btn btn-add" id="btnBackup" onclick="exportBackup()" title="Download a full JSON backup of your collection">⬇ Backup</button>
+      <button type="button" class="btn btn-share" id="btnDataLook" onclick="togglePanel('data')">⚙ Data &amp; look</button>
+      <button type="button" class="btn btn-share" id="btnTour" onclick="startTour(true)">❓ Tour</button>
       <a class="btn btn-share" href="help.html" style="text-decoration:none">❓ Help</a>
       <a class="btn btn-share" href="help.html#about" style="text-decoration:none">About</a>
     </div>
   </div>
-  <div class="stats-row" id="statsRow"></div>
-  <div class="overall-bar"><div class="overall-fill" id="overallFill"></div></div>
+  <div class="backup-banner" id="backupBanner">
+    <span><strong>Protect your progress:</strong> this browser can clear site data. Export a backup file you keep somewhere safe.</span>
+    <button type="button" class="btn btn-add" onclick="exportBackup()">⬇ Export backup now</button>
+    <button type="button" class="btn btn-share" onclick="dismissBackupBanner()">Remind me later</button>
+  </div>
+  <div class="stats-row" id="statsRow" data-tour="progress"></div>
+  <div class="overall-bar" id="overallBar" data-tour="progress"><div class="overall-fill" id="overallFill"></div></div>
   <div class="controls">
     <div style="flex:1;min-width:180px">
       <div class="search-wrap">
@@ -303,10 +342,10 @@
 
 <div class="panel accent" id="addPanel" style="display:none">
   <h3>＋ Add stickers</h3>
-  <p>Enter one or many at once. Each entry adds <strong>one copy</strong> (need→✓, ✓→+1, +1→+2…).<br>
-  Examples: <strong>MEX 1, 2, 3</strong> · <strong>ESP15 ARG7</strong> · <strong>570, 571, 572</strong></p>
+  <p>Enter one or many at once. Each code adds copies (need→✓→+1…). Repeats and <strong>x2</strong> work: <strong>MEX3 x2</strong> or list <strong>MEX3</strong> twice.<br>
+  Examples: <strong>MEX 1, 2, 3</strong> · <strong>ESP15 ARG7</strong> · <strong>MEX14 x2</strong> · <strong>570, 571</strong></p>
   <div class="add-input-row">
-    <input type="text" id="addInput" placeholder="e.g. MEX 1, 2, 3 or ESP15 ARG7 or 570 571" onkeydown="if(event.key==='Enter')doAdd()">
+    <input type="text" id="addInput" placeholder="e.g. MEX 1, 2, 3 · MEX14 x2 · ESP15 ARG7" onkeydown="if(event.key==='Enter')doAdd()">
     <button type="button" class="btn btn-add" onclick="doAdd()">Add</button>
     <button type="button" class="btn btn-share" onclick="togglePanel('add')">Close</button>
   </div>
@@ -361,20 +400,22 @@
 
 <div class="panel" id="dataPanel" style="display:none">
   <h3>⚙ Data &amp; look</h3>
-  <p><strong>Auto-save:</strong> your collection is stored in this browser whenever you change it. It survives refresh and reopening the file on the same device/browser.</p>
-  <div class="hint-box">Tip: periodically click <strong>Export backup</strong> and keep the JSON somewhere safe. The file is a full snapshot — missing stickers, spare counts, postal swaps (open/completed, sent/expected lines, pending/received/written-off), and dark/bright mode. Import restores everything on another device or after clearing browser data.<br><br>Flags load from the internet when available; if you’re offline they fall back to emoji (or a star for special stickers).</div>
+  <p><strong>Auto-save:</strong> your collection is stored in this browser whenever you change it. It survives refresh and reopening the file on the same device/browser — but browsers can wipe site data. Keep a backup file.</p>
 
-  <h3 style="margin-top:16px">Appearance</h3>
-  <div class="mode-toggle" id="modeToggle">
-    <button type="button" class="mode-btn" data-mode="dark" onclick="applyColorMode('dark')">Dark mode</button>
-    <button type="button" class="mode-btn" data-mode="bright" onclick="applyColorMode('bright')">Bright mode</button>
-  </div>
-
-  <h3 style="margin-top:8px">Backup</h3>
+  <h3 style="margin-top:12px" id="backupSection">⬇ Backup (important)</h3>
+  <div class="hint-box">Export downloads a full JSON snapshot — missing stickers, spare counts, postal swaps, and theme. Import restores everything on another device or after clearing browser data. The yellow <strong>Backup</strong> button in the header does the same export.</div>
   <div class="file-row">
     <button type="button" class="btn btn-add" onclick="exportBackup()">⬇ Export backup</button>
     <button type="button" class="btn btn-share" onclick="document.getElementById('importFile').click()">⬆ Import backup</button>
     <input type="file" id="importFile" accept="application/json,.json" style="display:none" onchange="importBackup(event)">
+  </div>
+  <div id="backupMeta" style="font-size:11px;color:var(--muted);margin-top:6px"></div>
+
+  <h3 style="margin-top:16px">Appearance</h3>
+  <div class="mode-toggle" id="modeToggle">
+    <button type="button" class="mode-btn" data-mode="system" onclick="applyColorMode('system')">Auto (system)</button>
+    <button type="button" class="mode-btn" data-mode="dark" onclick="applyColorMode('dark')">Dark</button>
+    <button type="button" class="mode-btn" data-mode="bright" onclick="applyColorMode('bright')">Bright</button>
   </div>
 
   <h3 style="margin-top:16px">Reset</h3>
@@ -383,6 +424,7 @@
     <button type="button" class="btn btn-danger" onclick="resetFresh()">Start fresh (all missing)</button>
   </div>
   <div class="file-row" style="margin-top:10px">
+    <button type="button" class="btn btn-share" onclick="startTour(true)">❓ Take quick tour</button>
     <button type="button" class="btn btn-share" onclick="togglePanel('data')">Close</button>
   </div>
 </div>
@@ -416,6 +458,21 @@
   No trackers · no accounts · your collection never leaves this browser unless you export it.
 </footer>
 <div id="toast"></div>
+<canvas id="celebrateCanvas" aria-hidden="true"></canvas>
+<div class="tour-root" id="tourRoot" aria-live="polite">
+  <div class="tour-dim" onclick="endTour(true)"></div>
+  <div class="tour-spot" id="tourSpot"></div>
+  <div class="tour-card" id="tourCard">
+    <div class="tour-step" id="tourStepLabel"></div>
+    <h4 id="tourTitle"></h4>
+    <p id="tourBody"></p>
+    <div class="tour-actions">
+      <button type="button" class="btn btn-share" onclick="endTour(true)">Skip</button>
+      <button type="button" class="btn btn-share" id="tourBackBtn" onclick="tourPrev()">Back</button>
+      <button type="button" class="btn btn-add" id="tourNextBtn" onclick="tourNext()">Next</button>
+    </div>
+  </div>
+</div>
 <!-- Optional: Cloudflare Web Analytics — see ANALYTICS.md. Uncomment and paste your token from dash.cloudflare.com → Web Analytics
 <script defer src="https://static.cloudflareinsights.com/beacon.min.js" data-cf-beacon='{"token": "YOUR_TOKEN_HERE"}'></script>
 -->
@@ -423,8 +480,12 @@
 <script>
 const TOTAL = 992;
 const STORAGE_KEY = 'wc2026-sticker-tracker-v1';
+const BACKUP_META_KEY = 'wc2026-sticker-tracker-backup-meta';
+const TOUR_KEY = 'wc2026-sticker-tracker-tour-v1';
 const SITE_URL = 'https://wc2026-sticker-tracker.pages.dev';
-const LIST_ATTRIBUTION = '\n\n— List produced by ' + SITE_URL;
+const LIST_ATTRIBUTION = '\n\n— via ' + SITE_URL;
+const BACKUP_NUDGE_MS = 7 * 24 * 60 * 60 * 1000;
+let isFirstVisit = false;
 
 function textForSharedList(text) {
   const body = String(text || '').trim();
@@ -588,11 +649,28 @@ function formatPages(pages) {
 const SEED_MISSING = [1,2,5,6,8,9,17,21,23,24,25,26,27,28,35,38,43,44,48,50,52,53,58,59,60,63,64,65,66,62,69,70,76,81,85,86,89,90,92,97,100,102,106,107,108,113,114,117,118,119,120,121,122,124,125,126,128,129,130,132,146,147,149,151,152,153,154,157,158,162,163,166,177,181,186,189,212,213,217,219,222,225,226,228,229,191,193,194,195,196,198,200,202,203,206,209,232,233,234,236,241,242,245,246,247,250,254,256,258,260,262,263,264,266,271,272,277,279,281,284,285,286,287,312,314,316,318,319,320,323,326,328,291,293,297,300,302,303,304,305,306,307,351,355,358,360,361,364,362,367,390,391,392,395,400,404,406,407,331,332,333,334,336,338,343,346,347,348,372,376,377,378,382,384,385,387,388,431,434,437,439,440,442,443,444,446,449,411,415,416,417,419,422,425,426,427,451,452,453,454,455,457,463,465,466,468,471,474,475,478,480,484,485,486,487,488,489,490,492,500,501,506,507,509,511,521,522,524,530,531,532,535,540,541,543,545,547,548,550,551,553,557,558,561,563,564,567,569,570,571,572,575,577,581,587,591,592,597,599,605,609,613,617,626,627,630,635,636,638,640,641,644,647,648,650,651,652,655,658,659,662,665,667,668,669,694,696,699,700,701,702,706,709,710,711,712,713,715,723,725,729,670,671,672,674,682,683,684,687,750,751,752,757,758,761,763,769,732,733,737,739,741,743,747,749,772,774,776,777,778,781,784,791,794,799,800,801,805,807,808,809,870,873,878,880,881,883,885,888,831,833,835,837,840,842,843,845,816,820,822,825,827,828,829,853,856,858,859,860,861,862,863,865,867,912,914,916,918,922,923,927,928,890,892,897,898,899,901,902,903,931,933,934,937,938,941,947,950,952,953,958,959,960,961,962,965,966,968,972,973,976,977,979,981,982,983,984,985,986,987,988,989,991,992];
 const SEED_DUPES = [13,20,34,36,49,57,61,71,77,78,80,91,95,99,103,116,133,136,139,141,148,156,167,168,170,171,172,175,210,216,199,204,207,230,237,239,240,249,252,253,257,270,274,276,282,283,311,317,327,295,301,352,353,365,368,335,340,341,370,374,379,430,433,435,438,441,413,420,421,424,456,472,473,476,477,482,499,505,513,517,537,539,546,552,556,562,566,568,574,579,583,588,589,594,598,603,604,608,610,616,622,623,639,643,645,646,649,657,666,690,693,698,703,704,707,708,721,677,680,754,759,766,730,731,738,744,745,748,770,782,785,788,792,798,806,871,882,884,886,830,832,836,844,847,810,811,812,821,823,850,851,869,910,913,915,924,896,930,940,942,944,948,949,951,956,964,974,980];
 
-const COLOR_MODES = ['dark', 'bright'];
+function systemColorMode() {
+  try {
+    return window.matchMedia('(prefers-color-scheme: light)').matches ? 'bright' : 'dark';
+  } catch (e) {
+    return 'dark';
+  }
+}
+
+function normalizeColorModePref(raw) {
+  if (raw === 'bright' || raw === 'light') return 'bright';
+  if (raw === 'dark') return 'dark';
+  return 'system';
+}
+
+function resolveColorMode(pref) {
+  const p = normalizeColorModePref(pref);
+  if (p === 'system') return systemColorMode();
+  return p;
+}
 
 function normalizeColorMode(raw) {
-  if (raw === 'bright' || raw === 'light') return 'bright';
-  return 'dark';
+  return resolveColorMode(raw === 'bright' || raw === 'light' || raw === 'dark' ? raw : 'system');
 }
 
 /* Album code → flagcdn / ISO code (gb-eng / gb-sct for home nations) */
@@ -640,7 +718,8 @@ let postalSwaps = [];
 let postalView = 'list';
 let postalDetailId = null;
 let postalReviewSel = {};
-let colorMode = 'dark';
+let colorModePref = 'system';
+let colorMode = resolveColorMode(colorModePref);
 
 const SWAP_SOURCES = ['Facebook', 'Website', 'Reddit', 'Friend', 'Other'];
 
@@ -686,11 +765,13 @@ function specialToSection(s) {
   return { slot: 0, code: s.code, name: s.name, conf: false, stickers: s.stickers, isSpecial: true, pages: s.pages };
 }
 const ccSection = specialSections.find(s => s.code === 'CC');
+const hisSection = specialSections.find(s => s.code === 'HIS');
 const allSections = [
-  ...specialSections.filter(s => s.code !== 'CC').map(specialToSection),
+  ...specialSections.filter(s => s.code !== 'CC' && s.code !== 'HIS').map(specialToSection),
   ...albumOrder.slice(0, 24).map(nationSection),
   specialToSection(ccSection),
-  ...albumOrder.slice(24).map(nationSection)
+  ...albumOrder.slice(24).map(nationSection),
+  specialToSection(hisSection)
 ];
 
 function copiesOf(seq) {
@@ -732,12 +813,14 @@ function bumpCopies(seq, delta) {
   const cur = copiesOf(seq);
   const next = Math.max(0, cur + delta);
   if (next === cur) return false;
+  const before = celebrationSnapshot();
   setCopies(seq, next);
   const label = info.code + ' #' + info.cardNum + ' — ' + info.name;
   showToast((next > cur ? '➕ ' : '➖ ') + label + ' → ' + copiesToastLabel(next));
   saveState();
   render();
   renderPostalPanel();
+  maybeCelebrate(before);
   const q = document.getElementById('searchInput').value.trim();
   if (q) handleSearch();
   return true;
@@ -764,8 +847,9 @@ function isPendingIncoming(seq) {
   return false;
 }
 
-function pendingSwapFor(seq) {
+function pendingSwapFor(seq, excludeSwapId) {
   for (const swap of openPostalSwaps()) {
+    if (excludeSwapId && swap.id === excludeSwapId) continue;
     for (const line of swap.expected || []) {
       if (line.status === 'pending' && line.seq === seq) return swap;
     }
@@ -777,6 +861,51 @@ function stickerLabel(seq) {
   const info = seqToInfo[seq];
   if (!info) return '#' + seq;
   return info.code + ' #' + info.cardNum + ' — ' + info.name;
+}
+
+function formatSentShortfall(seq, needDelta, haveSpares) {
+  const label = stickerLabel(seq);
+  if (copiesOf(seq) < 1) return label + ' — you don\'t have this sticker';
+  if (haveSpares <= 0) return label + ' — no spare to send (only the album copy)';
+  return label + ' — need +' + needDelta + ' spare, have +' + haveSpares;
+}
+
+function analyzePostalSent(sentCounts, oldSent) {
+  const shortfalls = [];
+  for (const [seq, qty] of sentCounts) {
+    const oldQty = oldSent ? (oldSent.get(+seq) || 0) : 0;
+    const delta = qty - oldQty;
+    if (delta <= 0) continue;
+    const have = sparesOf(+seq);
+    if (have < delta) shortfalls.push(formatSentShortfall(+seq, delta, have));
+  }
+  return shortfalls;
+}
+
+function analyzePostalExpected(expCounts, excludeSwapId) {
+  const alreadyHave = [];
+  const alreadyPending = [];
+  for (const [seq] of expCounts) {
+    const s = +seq;
+    if (copiesOf(s) >= 1) alreadyHave.push(stickerLabel(s));
+    const other = pendingSwapFor(s, excludeSwapId);
+    if (other) alreadyPending.push(stickerLabel(s) + ' (already expected from ' + (other.person || 'another swap') + ')');
+  }
+  return { alreadyHave, alreadyPending };
+}
+
+function confirmPostalExpectedWarnings(expCounts, excludeSwapId) {
+  const { alreadyHave, alreadyPending } = analyzePostalExpected(expCounts, excludeSwapId);
+  if (!alreadyHave.length && !alreadyPending.length) return true;
+  let msg = 'Check these expected stickers:\n';
+  if (alreadyHave.length) {
+    msg += '\nYou already have:\n• ' + alreadyHave.join('\n• ');
+  }
+  if (alreadyPending.length) {
+    msg += '\n\nAlready expected in another open swap:\n• ' + alreadyPending.join('\n• ');
+  }
+  msg += '\n\nContinue anyway?';
+  return confirm(msg);
 }
 
 function transitIcon(size) {
@@ -850,8 +979,75 @@ function sanitizeState(missArr, dupeData) {
 
 function setSaveStatus(ok, msg) {
   const el = document.getElementById('saveStatus');
-  el.className = 'save-status ' + (ok ? 'ok' : 'err');
-  el.textContent = msg;
+  if (!el) return;
+  el.className = 'save-status save-status-btn ' + (ok ? 'ok' : 'err');
+  const core = String(msg || (ok ? '● Saved on this device' : '● Could not save'))
+    .replace(/\s·\s(Backup|Backed up).*$/i, '');
+  const backupHint = backupStatusHint();
+  el.textContent = core + (backupHint ? ' · ' + backupHint : '');
+  el.title = 'Open backup & data settings';
+}
+
+function getBackupMeta() {
+  try {
+    return JSON.parse(localStorage.getItem(BACKUP_META_KEY) || 'null') || {};
+  } catch (e) {
+    return {};
+  }
+}
+
+function setBackupMeta(patch) {
+  const next = { ...getBackupMeta(), ...patch };
+  try { localStorage.setItem(BACKUP_META_KEY, JSON.stringify(next)); } catch (e) { /* ignore */ }
+  updateBackupUI();
+  const el = document.getElementById('saveStatus');
+  if (el) {
+    const ok = !el.classList.contains('err');
+    const core = el.textContent.replace(/\s·\s(Backup|Backed up).*$/i, '') || '● Saved on this device';
+    setSaveStatus(ok, core);
+  }
+}
+
+function backupStatusHint() {
+  const meta = getBackupMeta();
+  if (!meta.lastBackupAt) return 'Backup';
+  const days = Math.floor((Date.now() - new Date(meta.lastBackupAt).getTime()) / 86400000);
+  if (days <= 0) return 'Backed up today';
+  if (days === 1) return 'Backup 1d ago';
+  return 'Backup ' + days + 'd ago';
+}
+
+function updateBackupUI() {
+  const meta = getBackupMeta();
+  const banner = document.getElementById('backupBanner');
+  const backupMeta = document.getElementById('backupMeta');
+  const last = meta.lastBackupAt ? new Date(meta.lastBackupAt) : null;
+  const dismissedUntil = meta.nudgeDismissedUntil ? +meta.nudgeDismissedUntil : 0;
+  const needsNudge = !last || (Date.now() - last.getTime() > BACKUP_NUDGE_MS);
+  const showBanner = needsNudge && Date.now() > dismissedUntil;
+  if (banner) banner.classList.toggle('show', showBanner);
+  if (backupMeta) {
+    backupMeta.textContent = last
+      ? 'Last export: ' + last.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
+      : 'No backup exported from this browser yet.';
+  }
+}
+
+function openBackupPanel() {
+  const panel = document.getElementById('dataPanel');
+  const panels = { add: 'addPanel', trade: 'tradePanel', postal: 'postalPanel', share: 'sharePanel', data: 'dataPanel' };
+  Object.values(panels).forEach(id => { document.getElementById(id).style.display = 'none'; });
+  panel.style.display = 'block';
+  updateModeToggle();
+  updateBackupUI();
+  setTimeout(() => {
+    const el = document.getElementById('backupSection');
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+  }, 50);
+}
+
+function dismissBackupBanner() {
+  setBackupMeta({ nudgeDismissedUntil: Date.now() + BACKUP_NUDGE_MS });
 }
 
 const MIGRATION_FLAGS = {
@@ -877,6 +1073,7 @@ function buildStatePayload(opts) {
     dupes: spareSeqList(),
     postalSwaps,
     colorMode,
+    colorModePref,
     theme: colorMode,
   };
 }
@@ -1005,11 +1202,15 @@ function restoreStateFromData(data) {
   missingSet = miss;
   countMap = counts;
   postalSwaps = sanitizePostalSwaps(migrated.postalSwaps);
-  if (data.colorMode || data.theme) {
-    colorMode = normalizeColorMode(data.colorMode || data.theme);
-    document.documentElement.setAttribute('data-mode', colorMode);
-    updateModeToggle();
+  if (data.colorModePref != null) {
+    colorModePref = normalizeColorModePref(data.colorModePref);
+  } else {
+    // Older saves had a default dark theme, not an explicit choice — follow the device
+    colorModePref = 'system';
   }
+  colorMode = resolveColorMode(colorModePref);
+  document.documentElement.setAttribute('data-mode', colorMode);
+  updateModeToggle();
   return { migrated, miss, counts };
 }
 
@@ -1058,12 +1259,14 @@ function loadState() {
   missingSet = miss;
   countMap = counts;
   postalSwaps = [];
+  isFirstVisit = true;
   saveState();
   setSaveStatus(true, '● Starter collection loaded & saved');
 }
 
 function applyColorMode(mode) {
-  colorMode = normalizeColorMode(mode);
+  colorModePref = normalizeColorModePref(mode);
+  colorMode = resolveColorMode(colorModePref);
   document.documentElement.setAttribute('data-mode', colorMode);
   updateModeToggle();
   saveState();
@@ -1071,8 +1274,17 @@ function applyColorMode(mode) {
 
 function updateModeToggle() {
   document.querySelectorAll('.mode-btn').forEach(b => {
-    b.classList.toggle('active', b.dataset.mode === colorMode);
+    b.classList.toggle('active', b.dataset.mode === colorModePref);
   });
+}
+
+function syncColorModeFromSystem() {
+  if (colorModePref !== 'system') return;
+  const next = systemColorMode();
+  if (next === colorMode) return;
+  colorMode = next;
+  document.documentElement.setAttribute('data-mode', colorMode);
+  updateModeToggle();
 }
 
 function exportBackup() {
@@ -1083,7 +1295,8 @@ function exportBackup() {
   a.download = 'wc2026-collection-backup.json';
   a.click();
   URL.revokeObjectURL(a.href);
-  showToast('⬇ Backup downloaded');
+  setBackupMeta({ lastBackupAt: new Date().toISOString(), nudgeDismissedUntil: 0 });
+  showToast('⬇ Backup downloaded — keep this file safe');
 }
 
 function importBackup(ev) {
@@ -1143,66 +1356,71 @@ function resetFresh() {
   showToast('Fresh album — all missing');
 }
 
+function tokenizeStickerInput(raw) {
+  let text = String(raw || '').trim().toUpperCase()
+    .replace(/×/g, 'X')
+    .replace(/\*/g, 'X');
+  // MEX3X2 / 570X2 → MEX3 X2 / 570 X2
+  text = text.replace(/([A-Z]{2,4}\d{1,2})X(\d{1,2})\b/g, '$1 X$2');
+  text = text.replace(/\b(\d{1,4})X(\d{1,2})\b/g, '$1 X$2');
+  return text.split(/[\s,:\n]+/).filter(Boolean);
+}
+
+function peekMultiplier(tokens, i) {
+  const next = tokens[i + 1];
+  if (!next) return { mult: 1, skip: 0 };
+  const m = next.match(/^X(\d{1,2})$/);
+  if (!m) return { mult: 1, skip: 0 };
+  const n = parseInt(m[1], 10);
+  if (n < 1) return { mult: 1, skip: 0 };
+  return { mult: Math.min(n, 99), skip: 1 };
+}
+
 function parseMultiInput(raw) {
-  const seqs = [];
-  const unknown = [];
-  const text = raw.trim().toUpperCase();
-  const tokens = text.split(/[\s,:\n]+/).filter(Boolean);
-  let lastCode = null;
-  for (const tok of tokens) {
-    if (/^\d+$/.test(tok)) {
-      const n = parseInt(tok, 10);
-      if (lastCode && n >= 1 && n <= 20) {
-        const seq = codeToSeq[lastCode + n];
-        if (seq !== undefined) seqs.push(seq);
-        else unknown.push(tok);
-      } else if (seqToInfo[n]) {
-        seqs.push(n);
-        lastCode = null;
-      } else {
-        unknown.push(tok);
-      }
-    } else if (/^[A-Z]{2,4}\d{1,2}$/.test(tok)) {
-      const cm = tok.match(/^([A-Z]{2,4})(\d{1,2})$/);
-      const seq = codeToSeq[cm[1] + parseInt(cm[2], 10)];
-      if (seq !== undefined) { seqs.push(seq); lastCode = cm[1]; }
-      else unknown.push(tok);
-    } else if (/^[A-Z]{2,4}$/.test(tok) && (players[tok] || specialSections.some(s => s.code === tok))) {
-      lastCode = tok;
-    }
-  }
-  return { seqs: [...new Set(seqs)], unknown };
+  const { counts, unknown } = parseMultiInputCounted(raw);
+  return { seqs: [...counts.keys()].sort((a, b) => a - b), unknown };
 }
 
 function parseMultiInputCounted(raw) {
   const counts = new Map();
   const unknown = [];
-  const text = raw.trim().toUpperCase();
-  if (!text) return { counts, unknown };
-  const tokens = text.split(/[\s,:\n]+/).filter(Boolean);
+  const tokens = tokenizeStickerInput(raw);
+  if (!tokens.length) return { counts, unknown };
   let lastCode = null;
-  for (const tok of tokens) {
+  for (let i = 0; i < tokens.length; i++) {
+    const tok = tokens[i];
+    if (/^X\d+$/.test(tok)) {
+      unknown.push(tok);
+      continue;
+    }
     if (/^\d+$/.test(tok)) {
       const n = parseInt(tok, 10);
+      const { mult, skip } = peekMultiplier(tokens, i);
       if (lastCode && n >= 1 && n <= 20) {
         const seq = codeToSeq[lastCode + n];
-        if (seq !== undefined) counts.set(seq, (counts.get(seq) || 0) + 1);
+        if (seq !== undefined) counts.set(seq, (counts.get(seq) || 0) + mult);
         else unknown.push(tok);
+        i += skip;
       } else if (seqToInfo[n]) {
-        counts.set(n, (counts.get(n) || 0) + 1);
+        counts.set(n, (counts.get(n) || 0) + mult);
         lastCode = null;
+        i += skip;
       } else {
         unknown.push(tok);
       }
     } else if (/^[A-Z]{2,4}\d{1,2}$/.test(tok)) {
       const cm = tok.match(/^([A-Z]{2,4})(\d{1,2})$/);
       const seq = codeToSeq[cm[1] + parseInt(cm[2], 10)];
+      const { mult, skip } = peekMultiplier(tokens, i);
       if (seq !== undefined) {
-        counts.set(seq, (counts.get(seq) || 0) + 1);
+        counts.set(seq, (counts.get(seq) || 0) + mult);
         lastCode = cm[1];
+        i += skip;
       } else unknown.push(tok);
     } else if (/^[A-Z]{2,4}$/.test(tok) && (players[tok] || specialSections.some(s => s.code === tok))) {
       lastCode = tok;
+    } else {
+      unknown.push(tok);
     }
   }
   return { counts, unknown };
@@ -1264,20 +1482,14 @@ function savePostalSwap(id) {
   const { counts: newPendingExp, unknown: unkE } = parseMultiInputCounted(expRaw);
   const unknown = [...unkS, ...unkE];
   const oldSent = countsMapFromLines(swap.sent);
-  const shortfalls = [];
-  for (const [seq, qty] of newSent) {
-    const oldQty = oldSent.get(seq) || 0;
-    const delta = qty - oldQty;
-    if (delta > 0 && sparesOf(seq) < delta) {
-      shortfalls.push(stickerLabel(seq) + ' (need +' + delta + ' spare, have +' + sparesOf(seq) + ')');
-    }
-  }
+  const shortfalls = analyzePostalSent(newSent, oldSent);
   if (shortfalls.length) {
     res.className = 'add-result show notfound';
-    res.innerHTML = '<div style="color:var(--danger)">Not enough spares for added sent stickers:</div><div style="margin-top:4px;font-size:11px">' +
+    res.innerHTML = '<div style="color:var(--danger)">Can\'t send these — you don\'t have enough spares:</div><div style="margin-top:4px;font-size:11px">' +
       shortfalls.map(escapeHtml).join('<br>') + '</div>';
     return;
   }
+  if (!confirmPostalExpectedWarnings(newPendingExp, swap.id)) return;
   for (const [seq, qty] of newSent) {
     const oldQty = oldSent.get(seq) || 0;
     const delta = qty - oldQty;
@@ -1309,6 +1521,58 @@ function savePostalSwap(id) {
   showToast('📮 Swap updated');
   if (unknown.length) showToast('⚠️ Could not parse: ' + unknown.join(', '));
   postalShowDetail(swap.id);
+}
+
+function describePostalRevert(swap) {
+  const parts = [];
+  const sentN = (swap.sent || []).reduce((a, l) => a + l.qty, 0);
+  if (sentN) parts.push('Restore ' + sentN + ' sent spare' + (sentN === 1 ? '' : 's') + ' to your collection');
+  const pendingN = (swap.expected || []).filter(l => l.status === 'pending').length;
+  if (pendingN) parts.push('Put ' + pendingN + ' pending expected sticker' + (pendingN === 1 ? '' : 's') + ' back on your need list');
+  const recvN = (swap.expected || []).filter(l => l.status === 'received').reduce((a, l) => a + l.qty, 0);
+  if (recvN) parts.push('Remove ' + recvN + ' received cop' + (recvN === 1 ? 'y' : 'ies') + ' that this swap added');
+  const unN = (swap.unexpected || []).reduce((a, l) => a + l.qty, 0);
+  if (unN) parts.push('Remove ' + unN + ' unexpected cop' + (unN === 1 ? 'y' : 'ies') + ' that this swap added');
+  return parts;
+}
+
+function revertPostalSwapEffects(swap) {
+  for (const line of swap.sent || []) {
+    if (!seqToInfo[line.seq]) continue;
+    setCopies(line.seq, copiesOf(line.seq) + line.qty);
+  }
+  for (const line of swap.expected || []) {
+    if (!seqToInfo[line.seq]) continue;
+    if (line.status === 'pending') {
+      if (copiesOf(line.seq) < 1 && !pendingSwapFor(line.seq, swap.id)) missingSet.add(line.seq);
+    } else if (line.status === 'received') {
+      setCopies(line.seq, Math.max(0, copiesOf(line.seq) - line.qty));
+    }
+    // written_off: already restored to need list when written off — nothing else to undo
+  }
+  for (const line of swap.unexpected || []) {
+    if (!seqToInfo[line.seq]) continue;
+    setCopies(line.seq, Math.max(0, copiesOf(line.seq) - line.qty));
+  }
+}
+
+function deletePostalSwap(id) {
+  const swap = getSwap(id);
+  if (!swap) return;
+  const parts = describePostalRevert(swap);
+  const msg = 'Delete swap with "' + swap.person + '"?\n\n' +
+    (parts.length
+      ? 'This reverts collection changes from this swap:\n• ' + parts.join('\n• ')
+      : 'No collection changes to revert (nothing was applied).') +
+    '\n\nThis cannot be undone.';
+  if (!confirm(msg)) return;
+  revertPostalSwapEffects(swap);
+  postalSwaps = postalSwaps.filter(s => s.id !== id);
+  delete postalReviewSel[id];
+  saveState();
+  render();
+  postalShowList();
+  showToast(parts.length ? '🗑 Swap deleted — changes reverted' : '🗑 Swap deleted');
 }
 
 function postalShowList() {
@@ -1351,18 +1615,15 @@ function createPostalSwap() {
     res.textContent = 'Add at least one sticker you are sending or expecting.';
     return;
   }
-  const shortfalls = [];
-  for (const [seq, qty] of sentCounts) {
-    if (sparesOf(seq) < qty) {
-      shortfalls.push(stickerLabel(seq) + ' (have +' + sparesOf(seq) + ', sending ' + qty + ')');
-    }
-  }
+  const shortfalls = analyzePostalSent(sentCounts, null);
   if (shortfalls.length) {
     res.className = 'add-result show notfound';
-    res.innerHTML = '<div style="color:var(--danger)">Not enough spares to send:</div><div style="margin-top:4px;font-size:11px">' +
+    res.innerHTML = '<div style="color:var(--danger)">Can\'t send these — you don\'t have enough spares:</div><div style="margin-top:4px;font-size:11px">' +
       shortfalls.map(escapeHtml).join('<br>') + '</div>';
     return;
   }
+  if (!confirmPostalExpectedWarnings(expCounts, null)) return;
+  const beforeDone = celebrationSnapshot();
   for (const [seq, qty] of sentCounts) {
     setCopies(seq, copiesOf(seq) - qty);
   }
@@ -1385,16 +1646,18 @@ function createPostalSwap() {
   postalSwaps.unshift(swap);
   saveState();
   render();
+  maybeCelebrate(beforeDone);
   showToast('📮 Postal swap recorded');
   postalShowList();
   if (unknown.length) showToast('⚠️ Could not parse: ' + unknown.join(', '));
 }
 
-function receiveExpectedLine(swapId, lineIdx) {
+function receiveExpectedLine(swapId, lineIdx, skipCelebrate) {
   const swap = getSwap(swapId);
   if (!swap) return;
   const line = swap.expected[lineIdx];
   if (!line || line.status !== 'pending') return;
+  const before = skipCelebrate ? null : celebrationSnapshot();
   addCopiesQuiet(line.seq, line.qty);
   line.status = 'received';
   maybeCompleteSwap(swap);
@@ -1402,6 +1665,7 @@ function receiveExpectedLine(swapId, lineIdx) {
   render();
   renderPostalPanel();
   showToast('✅ Received ' + stickerLabel(line.seq));
+  if (!skipCelebrate) maybeCelebrate(before);
 }
 
 function writeOffExpectedLine(swapId, lineIdx) {
@@ -1428,6 +1692,7 @@ function receiveDifferentSticker(swapId, lineIdx) {
     alert(unknown.length ? 'Could not parse: ' + unknown.join(', ') : 'No sticker recognised.');
     return;
   }
+  const before = celebrationSnapshot();
   for (const [seq, qty] of counts) addCopiesQuiet(seq, qty);
   if (!swap.unexpected) swap.unexpected = [];
   for (const [seq, qty] of counts) {
@@ -1437,6 +1702,7 @@ function receiveDifferentSticker(swapId, lineIdx) {
   render();
   renderPostalPanel();
   showToast('✅ Added unexpected sticker(s) to collection');
+  maybeCelebrate(before);
 }
 
 function addUnexpectedToSwap(swapId) {
@@ -1449,6 +1715,7 @@ function addUnexpectedToSwap(swapId) {
     alert(unknown.length ? 'Could not parse: ' + unknown.join(', ') : 'Nothing recognised.');
     return;
   }
+  const before = celebrationSnapshot();
   for (const [seq, qty] of counts) addCopiesQuiet(seq, qty);
   if (!swap.unexpected) swap.unexpected = [];
   for (const [seq, qty] of counts) swap.unexpected.push({ seq: +seq, qty });
@@ -1456,6 +1723,7 @@ function addUnexpectedToSwap(swapId) {
   render();
   renderPostalPanel();
   showToast('✅ Added unexpected sticker(s)');
+  maybeCelebrate(before);
 }
 
 function confirmSelectedReceived(swapId) {
@@ -1463,7 +1731,16 @@ function confirmSelectedReceived(swapId) {
   if (!sel || !sel.size) { showToast('Select stickers to confirm'); return; }
   const indices = [...sel].sort((a, b) => a - b);
   postalReviewSel[swapId] = new Set();
-  indices.forEach(idx => receiveExpectedLine(swapId, idx));
+  const before = celebrationSnapshot();
+  indices.forEach(idx => receiveExpectedLine(swapId, idx, true));
+  maybeCelebrate(before);
+}
+
+function writeOffSelected(swapId) {
+  const sel = postalReviewSel[swapId];
+  if (!sel || !sel.size) { showToast('Select stickers to write off'); return; }
+  [...sel].sort((a, b) => b - a).forEach(idx => writeOffExpectedLine(swapId, idx));
+  postalReviewSel[swapId] = new Set();
 }
 
 function writeOffSelected(swapId) {
@@ -1477,7 +1754,9 @@ function receiveAllPending(swapId) {
   const swap = getSwap(swapId);
   if (!swap || !confirm('Mark ALL still-pending expected stickers as received?')) return;
   const pending = swap.expected.map((l, i) => l.status === 'pending' ? i : -1).filter(i => i >= 0);
-  pending.forEach(idx => receiveExpectedLine(swapId, idx));
+  const before = celebrationSnapshot();
+  pending.forEach(idx => receiveExpectedLine(swapId, idx, true));
+  maybeCelebrate(before);
 }
 
 function writeOffAllPending(swapId) {
@@ -1584,6 +1863,7 @@ function renderPostalPanel() {
       '<h3 style="margin:0">📮 ' + escapeHtml(swap.person) + '</h3>' +
       '<button type="button" class="btn btn-add" style="font-size:11px;margin-left:auto" onclick="postalShowCreate()">+ New swap</button>' +
       '<button type="button" class="btn btn-share" style="font-size:11px" onclick="postalShowEdit(\'' + swap.id + '\')">Edit</button>' +
+      '<button type="button" class="btn btn-danger" style="font-size:11px" onclick="deletePostalSwap(\'' + swap.id + '\')">Delete &amp; revert</button>' +
       '<button type="button" class="btn btn-share" style="font-size:11px" onclick="postalShowList()">← All swaps</button></div>' +
       '<div class="postal-meta">' + escapeHtml(swap.postedDate) +
       (swap.source ? ' · ' + escapeHtml(swap.source) : '') +
@@ -1655,36 +1935,45 @@ function doAdd() {
   const raw = document.getElementById('addInput').value;
   const res = document.getElementById('addResult');
   if (!raw.trim()) return;
-  const { seqs, unknown } = parseMultiInput(raw);
-  if (!seqs.length) {
+  const { counts, unknown } = parseMultiInputCounted(raw);
+  if (!counts.size) {
     res.className = 'add-result show notfound';
-    res.textContent = '❓ Nothing recognised — try "MEX 1, 2, 3" or "ESP15" or "570"';
+    res.textContent = '❓ Nothing recognised — try "MEX 1, 2, 3", "MEX14 x2", or "570"';
     return;
   }
+  const beforeDone = celebrationSnapshot();
   const addedToAlbum = [], bumpedSpare = [];
-  for (const seq of seqs) {
+  for (const [seq, qty] of counts) {
     const info = seqToInfo[seq];
     if (!info) continue;
     const before = copiesOf(seq);
-    setCopies(seq, before + 1);
+    setCopies(seq, before + qty);
     const after = copiesOf(seq);
-    const label = info.code + ' ' + info.cardNum + (after >= 2 ? ' (+' + (after - 1) + ')' : '');
+    const label = info.code + ' ' + info.cardNum +
+      (qty > 1 ? ' (+' + qty + ')' : '') +
+      (after >= 2 ? ' → +' + (after - 1) + ' spare' : '');
     if (before === 0) addedToAlbum.push(label);
     else bumpedSpare.push(label);
   }
   let html = '';
   if (addedToAlbum.length) html += '<div style="color:var(--success)">✅ Added to album (' + addedToAlbum.length + '): ' + addedToAlbum.join(', ') + '</div>';
-  if (bumpedSpare.length) html += '<div style="color:var(--warning);margin-top:4px">🔄 Extra copy (' + bumpedSpare.length + '): ' + bumpedSpare.join(', ') + '</div>';
+  if (bumpedSpare.length) html += '<div style="color:var(--warning);margin-top:4px">🔄 Extra copies (' + bumpedSpare.length + '): ' + bumpedSpare.join(', ') + '</div>';
   if (unknown.length) html += '<div style="color:var(--danger);margin-top:4px">❓ Not found: ' + unknown.join(', ') + '</div>';
   res.className = 'add-result show ok';
   res.innerHTML = html;
   document.getElementById('addInput').value = '';
-  if (addedToAlbum.length || bumpedSpare.length) { saveState(); render(); }
+  if (addedToAlbum.length || bumpedSpare.length) {
+    saveState();
+    render();
+    maybeCelebrate(beforeDone);
+  }
 }
 
 let tradeMode = 'need';
 let tradeMatchGive = [];
 let tradeMatchGet = [];
+let tradeNeedTotal = 0;
+let tradeSpareTotal = 0;
 let tradeUnknown = [];
 
 const TRADE_MODE_HINTS = {
@@ -1732,6 +2021,8 @@ function clearTrade() {
   document.getElementById('tradeTheirSpare').value = '';
   tradeMatchGive = [];
   tradeMatchGet = [];
+  tradeNeedTotal = 0;
+  tradeSpareTotal = 0;
   tradeUnknown = [];
   const res = document.getElementById('tradeResult');
   res.innerHTML = '';
@@ -1757,6 +2048,8 @@ function computeTradeMatches(needRaw, spareRaw) {
   const needParsed = needRaw.trim() ? parseMultiInput(needRaw) : { seqs: [], unknown: [] };
   const spareParsed = spareRaw.trim() ? parseMultiInput(spareRaw) : { seqs: [], unknown: [] };
   tradeUnknown = [...new Set([...needParsed.unknown, ...spareParsed.unknown])];
+  tradeNeedTotal = needParsed.seqs.length;
+  tradeSpareTotal = spareParsed.seqs.length;
 
   tradeMatchGive = [];
   for (const seq of needParsed.seqs) {
@@ -1781,7 +2074,7 @@ function doMatch() {
   if (tradeMode === 'need') {
     if (!needRaw.trim()) return;
     computeTradeMatches(needRaw, '');
-    if (!tradeMatchGive.length && !tradeUnknown.length) {
+    if (!tradeNeedTotal && !tradeUnknown.length) {
       res.style.display = 'block';
       res.innerHTML = '<div style="color:var(--danger);font-size:12px">❓ Could not parse any sticker codes from that list.</div>';
       return;
@@ -1793,7 +2086,7 @@ function doMatch() {
   if (tradeMode === 'spare') {
     if (!spareRaw.trim()) return;
     computeTradeMatches('', spareRaw);
-    if (!tradeMatchGet.length && !tradeUnknown.length) {
+    if (!tradeSpareTotal && !tradeUnknown.length) {
       res.style.display = 'block';
       res.innerHTML = '<div style="color:var(--danger);font-size:12px">❓ Could not parse any sticker codes from that list.</div>';
       return;
@@ -1813,18 +2106,39 @@ function doMatch() {
   renderTradeResult(maxFair > 0 ? maxFair : 0);
 }
 
+function coverageLine(matched, total, fullLabel, partialLabel, noneLabel) {
+  if (!total) return '';
+  if (matched >= total) return fullLabel.replace('{n}', String(total));
+  if (matched === 0) return noneLabel.replace('{n}', String(total));
+  return partialLabel
+    .replace('{m}', String(matched))
+    .replace('{n}', String(total))
+    .replace('{short}', String(total - matched));
+}
+
 function renderTradeNeedOnly() {
   const res = document.getElementById('tradeResult');
   let html = '';
+  const cover = tradeMatchGive.length;
+  const total = tradeNeedTotal;
+  const summary = coverageLine(
+    cover,
+    total,
+    '✅ You can cover <strong>all {n}</strong> they need',
+    '🔄 You can cover <strong>{m} of {n}</strong> they need — <strong>{short}</strong> still unmatched',
+    '❌ You can cover <strong>0 of {n}</strong> they need'
+  );
 
-  if (tradeMatchGive.length) {
+  if (summary) {
+    html += '<div class="trade-summary" style="margin-bottom:8px">' + summary + '</div>';
+  }
+
+  if (cover) {
     const text = groupByTeam(tradeMatchGive);
     html += '<div style="background:var(--warning-bg);border:1px solid color-mix(in srgb,var(--warning) 35%,transparent);border-radius:8px;padding:10px;margin-bottom:8px">' +
-      '<div style="color:var(--warning);font-weight:600;font-size:12px;margin-bottom:6px">🔄 You have ' + tradeMatchGive.length + ' of their needed stickers as spares — offer these:</div>' +
+      '<div style="color:var(--warning);font-weight:600;font-size:12px;margin-bottom:6px">Offer these spares:</div>' +
       '<pre style="font-family:monospace;font-size:11px;white-space:pre-wrap;color:var(--text);margin:0">' + escapeHtml(text) + '</pre>' +
       '<button type="button" class="btn btn-share" style="margin-top:8px;font-size:11px;border-color:var(--warning);color:var(--warning)" data-copy="' + escapeAttr(text) + '" onclick="copyFromBtn(this)">Copy</button></div>';
-  } else {
-    html += '<div style="color:var(--muted);font-size:12px;margin-bottom:8px">❌ You have no spares matching their needed list.</div>';
   }
 
   const ourMissingList = [...missingSet].filter(isNeedForTrade).map(seq => ({ seq, ...seqToInfo[seq] })).filter(s => s.code);
@@ -1847,15 +2161,26 @@ function renderTradeNeedOnly() {
 function renderTradeSpareOnly() {
   const res = document.getElementById('tradeResult');
   let html = '';
+  const cover = tradeMatchGet.length;
+  const total = tradeSpareTotal;
+  const summary = coverageLine(
+    cover,
+    total,
+    '✅ All <strong>{n}</strong> on their spare list are stickers you need',
+    '✅ <strong>{m} of {n}</strong> on their spare list match what you need — <strong>{short}</strong> you don\'t need',
+    '❌ None of their <strong>{n}</strong> spares are on your missing list'
+  );
 
-  if (tradeMatchGet.length) {
+  if (summary) {
+    html += '<div class="trade-summary" style="margin-bottom:8px">' + summary + '</div>';
+  }
+
+  if (cover) {
     const text = groupByTeam(tradeMatchGet);
     html += '<div style="background:var(--success-bg);border:1px solid color-mix(in srgb,var(--success) 35%,transparent);border-radius:8px;padding:10px;margin-bottom:8px">' +
-      '<div style="color:var(--success);font-weight:600;font-size:12px;margin-bottom:6px">✅ They have ' + tradeMatchGet.length + ' spares you need — ask for these:</div>' +
+      '<div style="color:var(--success);font-weight:600;font-size:12px;margin-bottom:6px">Ask for these:</div>' +
       '<pre style="font-family:monospace;font-size:11px;white-space:pre-wrap;color:var(--text);margin:0">' + escapeHtml(text) + '</pre>' +
       '<button type="button" class="btn btn-add" style="margin-top:8px;font-size:11px" data-copy="' + escapeAttr(text) + '" onclick="copyFromBtn(this)">Copy</button></div>';
-  } else {
-    html += '<div style="color:var(--muted);font-size:12px;margin-bottom:8px">❌ None of their spares are on your missing list.</div>';
   }
 
   const ourDupesList = spareSeqList().map(seq => ({ seq, ...seqToInfo[seq], copies: copiesOf(seq) })).filter(s => s.code);
@@ -1891,8 +2216,31 @@ function renderTradeResult(count) {
   const getText = groupByTeam(getPick);
   const bothText = 'I send:\n' + giveText + '\n\nI receive:\n' + getText;
 
-  let html = '<div class="trade-summary">You can offer <strong style="color:var(--warning)">' + giveN + '</strong> from their need list · ' +
-    'They can offer you <strong style="color:var(--success)">' + getN + '</strong> from their spare list</div>';
+  let html = '<div class="trade-summary">';
+  if (tradeNeedTotal) {
+    html += coverageLine(
+      giveN,
+      tradeNeedTotal,
+      'You can offer <strong style="color:var(--warning)">all {n}</strong> they need',
+      'You can offer <strong style="color:var(--warning)">{m} of {n}</strong> they need ({short} unmatched)',
+      'You can offer <strong style="color:var(--warning)">0 of {n}</strong> they need'
+    );
+  } else {
+    html += 'You can offer <strong style="color:var(--warning)">' + giveN + '</strong> from their need list';
+  }
+  html += ' · ';
+  if (tradeSpareTotal) {
+    html += coverageLine(
+      getN,
+      tradeSpareTotal,
+      'all <strong style="color:var(--success)">{n}</strong> of their spares match what you need',
+      '<strong style="color:var(--success)">{m} of {n}</strong> of their spares match what you need',
+      'none of their <strong style="color:var(--success)">{n}</strong> spares match your needs'
+    );
+  } else {
+    html += 'they can offer you <strong style="color:var(--success)">' + getN + '</strong> from their spare list';
+  }
+  html += '</div>';
 
   if (maxFair > 0) {
     html += '<div class="trade-balance-bar">' +
@@ -1942,6 +2290,119 @@ function cycleSeq(seq, delta) {
   bumpCopies(seq, delta == null ? 1 : delta);
 }
 
+function isSectionOwned(sec) {
+  return sec.stickers.every(s => copiesOf(s.seq) >= 1);
+}
+
+function isAlbumComplete() {
+  for (const seq of Object.keys(seqToInfo)) {
+    if (copiesOf(+seq) < 1) return false;
+  }
+  return Object.keys(seqToInfo).length > 0;
+}
+
+function celebrationSnapshot() {
+  const codes = new Set();
+  for (const sec of allSections) {
+    if (isSectionOwned(sec)) codes.add(sec.code);
+  }
+  return { codes, album: isAlbumComplete() };
+}
+
+let celebrateEnabled = false;
+let celebrateRaf = 0;
+
+function launchConfetti(opts) {
+  const canvas = document.getElementById('celebrateCanvas');
+  if (!canvas) return;
+  const ctx = canvas.getContext('2d');
+  const dpr = window.devicePixelRatio || 1;
+  const w = window.innerWidth;
+  const h = window.innerHeight;
+  canvas.width = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width = w + 'px';
+  canvas.style.height = h + 'px';
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+  const colors = opts && opts.big
+    ? ['#FEF400', '#003DA5', '#ffffff', '#5ee89a', '#FFAB4C', '#ff7a7a']
+    : ['#FEF400', '#003DA5', '#ffffff', '#5ee89a'];
+  const count = opts && opts.big ? 160 : 90;
+  const particles = [];
+  for (let i = 0; i < count; i++) {
+    const angle = (Math.PI * 2 * i) / count + Math.random() * 0.4;
+    const speed = (opts && opts.big ? 8 : 6) + Math.random() * 7;
+    particles.push({
+      x: w * (0.3 + Math.random() * 0.4),
+      y: h * (0.25 + Math.random() * 0.2),
+      vx: Math.cos(angle) * speed,
+      vy: Math.sin(angle) * speed - (4 + Math.random() * 4),
+      g: 0.18 + Math.random() * 0.12,
+      size: 4 + Math.random() * 5,
+      rot: Math.random() * Math.PI,
+      vr: (Math.random() - 0.5) * 0.3,
+      color: colors[i % colors.length],
+      life: 1
+    });
+  }
+
+  if (celebrateRaf) cancelAnimationFrame(celebrateRaf);
+  const start = performance.now();
+  const duration = opts && opts.big ? 3200 : 2200;
+
+  function frame(now) {
+    const t = now - start;
+    ctx.clearRect(0, 0, w, h);
+    particles.forEach(p => {
+      p.vy += p.g;
+      p.x += p.vx;
+      p.y += p.vy;
+      p.vx *= 0.99;
+      p.rot += p.vr;
+      p.life = Math.max(0, 1 - t / duration);
+      if (p.life <= 0) return;
+      ctx.save();
+      ctx.translate(p.x, p.y);
+      ctx.rotate(p.rot);
+      ctx.globalAlpha = Math.min(1, p.life * 1.4);
+      ctx.fillStyle = p.color;
+      ctx.fillRect(-p.size / 2, -p.size / 4, p.size, p.size / 2);
+      ctx.restore();
+    });
+    if (t < duration) celebrateRaf = requestAnimationFrame(frame);
+    else {
+      ctx.clearRect(0, 0, w, h);
+      celebrateRaf = 0;
+    }
+  }
+  celebrateRaf = requestAnimationFrame(frame);
+}
+
+function maybeCelebrate(before) {
+  if (!celebrateEnabled || !before) return;
+  const after = celebrationSnapshot();
+  if (after.album && !before.album) {
+    launchConfetti({ big: true });
+    showToast('🏆 Album complete — every sticker in the collection!');
+    return;
+  }
+  const newly = [];
+  for (const code of after.codes) {
+    if (!before.codes.has(code)) {
+      const sec = allSections.find(s => s.code === code);
+      if (sec) newly.push(sec);
+    }
+  }
+  if (!newly.length) return;
+  launchConfetti({ big: false });
+  if (newly.length === 1) {
+    showToast('🎉 ' + newly[0].name + ' complete!');
+  } else {
+    showToast('🎉 ' + newly.length + ' sections complete!');
+  }
+}
+
 function showToast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg;
@@ -1949,6 +2410,124 @@ function showToast(msg) {
   clearTimeout(t._timer);
   t._timer = setTimeout(() => { t.style.display = 'none'; }, 2200);
 }
+
+const TOUR_STEPS = [
+  {
+    title: "Let's get you started!",
+    body: 'Add the stickers you already have in the album — and don’t forget duplicates so they’re ready to swap. You can paste a whole list in one go (try MEX14 x2 for two copies).',
+    target: '#btnAddStickers',
+    place: 'below',
+    before() { /* keep panels closed so the button is visible */ }
+  },
+  {
+    title: 'Follow your progress',
+    body: 'Your collection is shown by team in album order. Watch the bar and percentages fill as you go — jump to any team with the flag row below.',
+    target: '#overallBar',
+    place: 'below'
+  },
+  {
+    title: 'Swap smarter',
+    body: 'Use Trade match to compare lists, and Postal swaps to track stickers you’ve posted or are waiting for — so you always swap the right ones.',
+    target: '#postalBtn',
+    place: 'below'
+  }
+];
+
+let tourIndex = 0;
+let tourActive = false;
+
+function tourTargetEl(step) {
+  return step && step.target ? document.querySelector(step.target) : null;
+}
+
+function positionTourUI() {
+  const step = TOUR_STEPS[tourIndex];
+  const root = document.getElementById('tourRoot');
+  const spot = document.getElementById('tourSpot');
+  const card = document.getElementById('tourCard');
+  if (!root || !step) return;
+  const el = tourTargetEl(step);
+  const pad = 8;
+  let top = 80, left = 16, width = 200, height = 40;
+  if (el) {
+    const r = el.getBoundingClientRect();
+    top = Math.max(8, r.top - pad);
+    left = Math.max(8, r.left - pad);
+    width = r.width + pad * 2;
+    height = r.height + pad * 2;
+    el.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'nearest' });
+  }
+  spot.style.top = top + 'px';
+  spot.style.left = left + 'px';
+  spot.style.width = width + 'px';
+  spot.style.height = height + 'px';
+
+  const cardW = Math.min(340, window.innerWidth - 24);
+  let cardTop = top + height + 14;
+  let cardLeft = Math.min(left, window.innerWidth - cardW - 12);
+  if (cardTop + 200 > window.innerHeight) {
+    cardTop = Math.max(12, top - 210);
+  }
+  if (cardLeft < 12) cardLeft = 12;
+  card.style.width = cardW + 'px';
+  card.style.top = cardTop + 'px';
+  card.style.left = cardLeft + 'px';
+}
+
+function renderTourStep() {
+  const step = TOUR_STEPS[tourIndex];
+  if (!step) { endTour(true); return; }
+  if (typeof step.before === 'function') step.before();
+  document.getElementById('tourStepLabel').textContent = 'Step ' + (tourIndex + 1) + ' of ' + TOUR_STEPS.length;
+  document.getElementById('tourTitle').textContent = step.title;
+  document.getElementById('tourBody').textContent = step.body;
+  const back = document.getElementById('tourBackBtn');
+  const next = document.getElementById('tourNextBtn');
+  back.style.visibility = tourIndex === 0 ? 'hidden' : 'visible';
+  next.textContent = tourIndex === TOUR_STEPS.length - 1 ? 'Done' : 'Next';
+  positionTourUI();
+}
+
+function startTour(manual) {
+  try {
+    if (!manual && localStorage.getItem(TOUR_KEY)) return;
+  } catch (e) { /* ignore */ }
+  // Close open panels so spotlight targets stay on-screen
+  ['addPanel', 'tradePanel', 'postalPanel', 'sharePanel', 'dataPanel'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = 'none';
+  });
+  tourIndex = 0;
+  tourActive = true;
+  document.getElementById('tourRoot').classList.add('show');
+  renderTourStep();
+}
+
+function tourNext() {
+  if (tourIndex >= TOUR_STEPS.length - 1) {
+    endTour(true);
+    return;
+  }
+  tourIndex += 1;
+  renderTourStep();
+}
+
+function tourPrev() {
+  if (tourIndex <= 0) return;
+  tourIndex -= 1;
+  renderTourStep();
+}
+
+function endTour(markDone) {
+  tourActive = false;
+  document.getElementById('tourRoot').classList.remove('show');
+  if (markDone) {
+    try { localStorage.setItem(TOUR_KEY, new Date().toISOString()); } catch (e) { /* ignore */ }
+  }
+}
+
+window.addEventListener('resize', () => { if (tourActive) positionTourUI(); });
+window.addEventListener('scroll', () => { if (tourActive) positionTourUI(); }, true);
 
 let shareTab = 'missing';
 function setShareTab(t, el) {
@@ -2000,7 +2579,7 @@ function togglePanel(p) {
     if (p === 'add') setTimeout(() => document.getElementById('addInput').focus(), 50);
     if (p === 'share') buildShare();
     if (p === 'postal') { if (!isOpen) postalShowList(); else renderPostalPanel(); }
-    if (p === 'data') updateModeToggle();
+    if (p === 'data') { updateModeToggle(); updateBackupUI(); }
   }
 }
 
@@ -2039,7 +2618,7 @@ function handleSearch() {
   render();
 }
 
-let currentTab = 'all', activeCountry = null, expandedCards = new Set();
+let currentTab = 'all', activeCountry = null, collapsedCards = new Set();
 function setTab(f, el) {
   currentTab = f;
   activeCountry = null;
@@ -2053,7 +2632,7 @@ function setCountry(code, el) {
   document.querySelectorAll('.country-pill').forEach(p => p.classList.remove('active'));
   if (activeCountry) {
     el.classList.add('active');
-    expandedCards.add(code);
+    collapsedCards.delete(code);
     currentTab = 'all';
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     document.querySelector('.tab-btn').classList.add('active');
@@ -2065,8 +2644,8 @@ function setCountry(code, el) {
   }, 100);
 }
 function toggleCard(code) {
-  if (expandedCards.has(code)) expandedCards.delete(code);
-  else expandedCards.add(code);
+  if (collapsedCards.has(code)) collapsedCards.delete(code);
+  else collapsedCards.add(code);
   render();
 }
 
@@ -2175,7 +2754,7 @@ function render() {
   document.getElementById('grid').innerHTML = filtered.map(t => {
     const bc = t.mc === 0 ? 'done' : t.mc >= Math.ceil(t.total * 0.6) ? 'danger' : t.mc >= Math.ceil(t.total * 0.3) ? 'warn' : 'ok';
     const bt = t.mc === 0 && !t.pc ? '✓ Complete' : (t.mc ? t.mc + ' missing' : '') + (t.pc ? (t.mc ? ' · ' : '') + t.pc + ' pending' : t.mc ? '' : 'pending');
-    const isExp = expandedCards.has(t.code) || autoExpand;
+    const isExp = !collapsedCards.has(t.code) || autoExpand;
     const rows = t.stickers.map(s => {
       const n = s.copies;
       const pending = s.pending;
@@ -2225,8 +2804,16 @@ function render() {
 loadState();
 document.documentElement.setAttribute('data-mode', colorMode);
 updateModeToggle();
+updateBackupUI();
+try {
+  window.matchMedia('(prefers-color-scheme: light)').addEventListener('change', syncColorModeFromSystem);
+} catch (e) { /* older browsers */ }
 render();
 renderPostalPanel();
+celebrateEnabled = true;
+if (isFirstVisit) {
+  setTimeout(() => startTour(false), 700);
+}
 </script>
 </body>
 </html>
