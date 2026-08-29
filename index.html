@@ -316,7 +316,7 @@
     </div>
   </div>
   <div class="backup-banner" id="backupBanner">
-    <span><strong>Protect your progress:</strong> this browser can clear site data. Export a backup file you keep somewhere safe.</span>
+    <span id="backupBannerMsg"><strong>Protect your progress:</strong> this browser can clear site data. Export a backup file you keep somewhere safe.</span>
     <button type="button" class="btn btn-add" onclick="exportBackup()">⬇ Export backup now</button>
     <button type="button" class="btn btn-share" onclick="dismissBackupBanner()">Remind me later</button>
   </div>
@@ -484,7 +484,7 @@ const BACKUP_META_KEY = 'wc2026-sticker-tracker-backup-meta';
 const TOUR_KEY = 'wc2026-sticker-tracker-tour-v1';
 const SITE_URL = 'https://wc2026-sticker-tracker.pages.dev';
 const LIST_ATTRIBUTION = '\n\n— via ' + SITE_URL;
-const BACKUP_NUDGE_MS = 7 * 24 * 60 * 60 * 1000;
+const STICKERS_BEFORE_BACKUP_NUDGE = 5;
 let isFirstVisit = false;
 
 function textForSharedList(text) {
@@ -1017,19 +1017,53 @@ function backupStatusHint() {
   return 'Backup ' + days + 'd ago';
 }
 
+function backupNudgeMessage(reason) {
+  if (reason === 'postal') {
+    return '<strong>Backup recommended:</strong> you just saved a postal swap. Export a copy so you don’t lose it if this browser clears data.';
+  }
+  if (reason === 'stickers') {
+    return '<strong>Backup recommended:</strong> you’ve added ' + STICKERS_BEFORE_BACKUP_NUDGE + '+ stickers since your last export. Save a backup file somewhere safe.';
+  }
+  return '<strong>Protect your progress:</strong> this browser can clear site data. Export a backup file you keep somewhere safe.';
+}
+
+function requestBackupNudge(reason) {
+  setBackupMeta({ nudgeActive: true, nudgeReason: reason || 'manual' });
+}
+
+function noteStickersAdded(n) {
+  const qty = Math.max(0, Math.floor(+n) || 0);
+  if (!qty) return;
+  const meta = getBackupMeta();
+  const next = (meta.stickersSinceBackup || 0) + qty;
+  if (next >= STICKERS_BEFORE_BACKUP_NUDGE) {
+    setBackupMeta({
+      stickersSinceBackup: 0,
+      nudgeActive: true,
+      nudgeReason: 'stickers'
+    });
+  } else {
+    setBackupMeta({ stickersSinceBackup: next });
+  }
+}
+
 function updateBackupUI() {
   const meta = getBackupMeta();
   const banner = document.getElementById('backupBanner');
   const backupMeta = document.getElementById('backupMeta');
+  const msg = document.getElementById('backupBannerMsg');
   const last = meta.lastBackupAt ? new Date(meta.lastBackupAt) : null;
-  const dismissedUntil = meta.nudgeDismissedUntil ? +meta.nudgeDismissedUntil : 0;
-  const needsNudge = !last || (Date.now() - last.getTime() > BACKUP_NUDGE_MS);
-  const showBanner = needsNudge && Date.now() > dismissedUntil;
+  const showBanner = !!meta.nudgeActive;
   if (banner) banner.classList.toggle('show', showBanner);
+  if (msg && showBanner) msg.innerHTML = backupNudgeMessage(meta.nudgeReason);
   if (backupMeta) {
-    backupMeta.textContent = last
+    const pending = meta.stickersSinceBackup || 0;
+    const lastTxt = last
       ? 'Last export: ' + last.toLocaleString([], { dateStyle: 'medium', timeStyle: 'short' })
       : 'No backup exported from this browser yet.';
+    backupMeta.textContent = lastTxt +
+      ' · Reminders: after each postal swap, and every ' + STICKERS_BEFORE_BACKUP_NUDGE +
+      ' stickers added (' + pending + ' since last backup/nudge).';
   }
 }
 
@@ -1047,7 +1081,8 @@ function openBackupPanel() {
 }
 
 function dismissBackupBanner() {
-  setBackupMeta({ nudgeDismissedUntil: Date.now() + BACKUP_NUDGE_MS });
+  // Hide until the next postal swap or next batch of stickers — not a long timer
+  setBackupMeta({ nudgeActive: false, nudgeReason: '' });
 }
 
 const MIGRATION_FLAGS = {
@@ -1295,7 +1330,13 @@ function exportBackup() {
   a.download = 'wc2026-collection-backup.json';
   a.click();
   URL.revokeObjectURL(a.href);
-  setBackupMeta({ lastBackupAt: new Date().toISOString(), nudgeDismissedUntil: 0 });
+  setBackupMeta({
+    lastBackupAt: new Date().toISOString(),
+    nudgeActive: false,
+    nudgeReason: '',
+    stickersSinceBackup: 0,
+    nudgeDismissedUntil: 0
+  });
   showToast('⬇ Backup downloaded — keep this file safe');
 }
 
@@ -1647,6 +1688,7 @@ function createPostalSwap() {
   saveState();
   render();
   maybeCelebrate(beforeDone);
+  requestBackupNudge('postal');
   showToast('📮 Postal swap recorded');
   postalShowList();
   if (unknown.length) showToast('⚠️ Could not parse: ' + unknown.join(', '));
@@ -1963,9 +2005,12 @@ function doAdd() {
   res.innerHTML = html;
   document.getElementById('addInput').value = '';
   if (addedToAlbum.length || bumpedSpare.length) {
+    let addedCount = 0;
+    for (const qty of counts.values()) addedCount += qty;
     saveState();
     render();
     maybeCelebrate(beforeDone);
+    noteStickersAdded(addedCount);
   }
 }
 
