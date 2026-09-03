@@ -260,6 +260,8 @@
   .postal-form label{display:block;font-size:10px;font-weight:600;color:var(--muted);margin:8px 0 3px;text-transform:uppercase;letter-spacing:.04em}
   .postal-form input,.postal-form select,.postal-form textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:12px;padding:7px 9px}
   .postal-form textarea{font-family:monospace;min-height:64px;resize:vertical;line-height:1.5}
+  .postal-form textarea#postalSent{min-height:200px}
+  .postal-form textarea#postalExpected{min-height:140px}
   .inbox-report{margin-top:10px;font-size:12px;line-height:1.5}
   .inbox-report h4{font-size:12px;margin:12px 0 4px;letter-spacing:.02em}
   .inbox-report ul{margin:0;padding-left:18px}
@@ -729,6 +731,7 @@ let postalDetailId = null;
 let postalReviewSel = {};
 let postalInboxRaw = '';
 let postalInboxPreview = null;
+let postalPackSel = {};
 let colorModePref = 'system';
 let colorMode = resolveColorMode(colorModePref);
 
@@ -1633,6 +1636,7 @@ function deletePostalSwap(id) {
   revertPostalSwapEffects(swap);
   postalSwaps = postalSwaps.filter(s => s.id !== id);
   delete postalReviewSel[id];
+  delete postalPackSel[id];
   saveState();
   render();
   postalShowList();
@@ -2011,6 +2015,41 @@ function toggleReviewCheck(swapId, idx, checked) {
   else postalReviewSel[swapId].delete(idx);
 }
 
+function togglePackCheck(swapId, seq, checked) {
+  if (!postalPackSel[swapId]) postalPackSel[swapId] = new Set();
+  if (checked) postalPackSel[swapId].add(seq);
+  else postalPackSel[swapId].delete(seq);
+  const row = document.getElementById('pack-' + swapId + '-' + seq);
+  if (row) row.classList.toggle('done', !!checked);
+}
+
+function renderSentPackList(swap, withChecks) {
+  if (!swap.sent || !swap.sent.length) return '<div class="postal-meta">No sent stickers recorded.</div>';
+  return [...swap.sent].sort((a, b) => a.seq - b.seq).map(line => {
+    const info = seqToInfo[line.seq];
+    if (!info) return '';
+    const qtyTxt = line.qty > 1 ? ' ×' + line.qty : '';
+    const label = escapeHtml(info.code + ' #' + info.cardNum + qtyTxt + ' — ' + info.name);
+    if (!withChecks) {
+      return '<div class="postal-line"><span>' + label + '</span></div>';
+    }
+    const packed = postalPackSel[swap.id] && postalPackSel[swap.id].has(line.seq);
+    return '<div class="postal-line' + (packed ? ' done' : '') + '" id="pack-' + swap.id + '-' + line.seq + '">' +
+      '<label style="display:flex;align-items:center;gap:6px;flex:1;cursor:pointer">' +
+      '<input type="checkbox"' + (packed ? ' checked' : '') +
+      ' onchange="togglePackCheck(\'' + swap.id + '\',' + line.seq + ',this.checked)">' +
+      '<span>' + label + '</span></label></div>';
+  }).join('');
+}
+
+function copySentList(swapId) {
+  const swap = getSwap(swapId);
+  if (!swap) return;
+  const text = swap.sent.length ? countsToLines(new Map(swap.sent.map(l => [l.seq, l.qty]))) : '';
+  if (!text) { showToast('Nothing to copy'); return; }
+  navigator.clipboard.writeText(text).then(() => showToast('📋 Sent list copied')).catch(() => prompt('Copy this text:', text));
+}
+
 function renderExpectedLine(swap, line, idx) {
   const info = seqToInfo[line.seq];
   if (!info) return '';
@@ -2077,7 +2116,11 @@ function renderPostalPanel() {
       '<label>Date posted</label><input type="date" id="postalDate" value="' + (swap ? swap.postedDate : new Date().toISOString().slice(0, 10)) + '">' +
       '<label>Notes (optional)</label><textarea id="postalNotes" placeholder="Address snippet, FB group name, etc.">' + escapeHtml(swap ? swap.notes : '') + '</textarea>' +
       '<div class="postal-section">I sent (spares only)</div>' +
+      '<p style="font-size:11px;color:var(--muted);margin:0 0 6px">Full list for packing the envelope. Tick names on the swap page after you save.</p>' +
       '<textarea id="postalSent" placeholder="MEX: 4, 14  or  ESP15 ARG7">' + escapeHtml(sentVal) + '</textarea>' +
+      (swap && swap.sent && swap.sent.length
+        ? '<div class="postal-section">Sent — names</div>' + renderSentPackList(swap, false)
+        : '') +
       settledHtml +
       '<div class="postal-section">Still expecting (pending only)</div>' +
       '<textarea id="postalExpected" placeholder="ARG: 7, 12  POR: 3">' + escapeHtml(expVal) + '</textarea>' +
@@ -2094,7 +2137,6 @@ function renderPostalPanel() {
     const swap = getSwap(postalDetailId);
     if (!swap) { postalShowList(); return; }
     const prog = swapProgress(swap);
-    const sentTxt = swap.sent.length ? countsToLines(new Map(swap.sent.map(l => [l.seq, l.qty]))) : '(none recorded)';
     const unexp = (swap.unexpected || []).map(u => stickerLabel(u.seq) + (u.qty > 1 ? ' ×' + u.qty : '') +
       (u.note ? ' (' + u.note + ')' : '')).join(', ');
     let html = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:8px">' +
@@ -2111,8 +2153,14 @@ function renderPostalPanel() {
     if (prog.total) {
       html += '<div class="postal-progress">Expected: ' + prog.done + ' received · ' + prog.pending + ' pending · ' + prog.off + ' written off</div>';
     }
-    html += '<div class="postal-section">Sent (gone — read only)</div>' +
-      '<div class="share-output" style="max-height:80px;margin-bottom:8px">' + escapeHtml(sentTxt) + '</div>';
+    html += '<div class="postal-section">Sent — pack this envelope (' +
+      swap.sent.reduce((a, l) => a + l.qty, 0) + ')</div>' +
+      '<p style="font-size:11px;color:var(--muted);margin:0 0 6px">Tick each sticker as you put it in the letter. Names stay on screen — no tiny scrolling box.</p>' +
+      (swap.sent.length
+        ? '<div class="file-row" style="margin-bottom:6px">' +
+          '<button type="button" class="btn btn-share" onclick="copySentList(\'' + swap.id + '\')">Copy sent list</button></div>'
+        : '') +
+      renderSentPackList(swap, true);
     if (unexp) {
       html += '<div class="postal-section">Unexpected received</div><div class="postal-meta" style="margin-bottom:8px">' + escapeHtml(unexp) + '</div>';
     }
