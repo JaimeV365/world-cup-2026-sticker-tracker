@@ -109,6 +109,8 @@
   .lookup-result.dupe{background:var(--warning-bg);color:var(--warning);border:1px solid color-mix(in srgb,var(--warning) 35%,transparent)}
   .lookup-result.transit{background:var(--transit-bg);color:var(--transit);border:1px solid var(--transit-border)}
   .lookup-result.unknown{background:var(--surface2);color:var(--muted);border:1px solid var(--border)}
+  .lookup-actions{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}
+  .lookup-actions .btn{font-size:11px;padding:4px 10px;min-height:28px}
   select{cursor:pointer;font-size:12px}
 
   .btn{border:none;border-radius:var(--radius);cursor:pointer;font-family:'Arvo',Georgia,serif;font-weight:700;font-size:12px;padding:7px 13px;transition:all .15s;letter-spacing:.02em}
@@ -258,6 +260,12 @@
   .postal-form label{display:block;font-size:10px;font-weight:600;color:var(--muted);margin:8px 0 3px;text-transform:uppercase;letter-spacing:.04em}
   .postal-form input,.postal-form select,.postal-form textarea{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-family:inherit;font-size:12px;padding:7px 9px}
   .postal-form textarea{font-family:monospace;min-height:64px;resize:vertical;line-height:1.5}
+  .inbox-report{margin-top:10px;font-size:12px;line-height:1.5}
+  .inbox-report h4{font-size:12px;margin:12px 0 4px;letter-spacing:.02em}
+  .inbox-report ul{margin:0;padding-left:18px}
+  .inbox-report .ok{color:var(--success)}
+  .inbox-report .warn{color:var(--warning)}
+  .inbox-report .bad{color:var(--danger)}
   .postal-section{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.05em;margin:10px 0 4px}
   .trade-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px}
   .trade-fields.single{grid-template-columns:1fr}
@@ -391,7 +399,7 @@
     <button type="button" class="share-tab" onclick="setShareTab('both',this)">Both</button>
   </div>
   <div class="share-output" id="shareOutput"></div>
-  <p style="font-size:10px;color:var(--muted);margin-top:6px">Copied lists include a link to this tool at the bottom.</p>
+  <p style="font-size:10px;color:var(--muted);margin-top:6px">Need lists skip stickers already expected by post. Copied lists include a link to this tool at the bottom.</p>
   <div class="share-actions">
     <button type="button" class="btn btn-add" onclick="copyShare()">Copy to clipboard</button>
     <button type="button" class="btn btn-share" onclick="togglePanel('share')">Close</button>
@@ -719,6 +727,8 @@ let postalSwaps = [];
 let postalView = 'list';
 let postalDetailId = null;
 let postalReviewSel = {};
+let postalInboxRaw = '';
+let postalInboxPreview = null;
 let colorModePref = 'system';
 let colorMode = resolveColorMode(colorModePref);
 
@@ -839,23 +849,39 @@ function openPostalSwaps() {
   return postalSwaps.filter(s => s.status === 'open');
 }
 
-function isPendingIncoming(seq) {
+function pendingHitsFor(seq, excludeSwapId) {
+  const hits = [];
   for (const swap of openPostalSwaps()) {
-    for (const line of swap.expected || []) {
-      if (line.status === 'pending' && line.seq === seq) return true;
-    }
+    if (excludeSwapId && swap.id === excludeSwapId) continue;
+    (swap.expected || []).forEach((line, idx) => {
+      if (line.status === 'pending' && line.seq === seq) hits.push({ swap, line, idx });
+    });
   }
-  return false;
+  return hits;
+}
+
+function isPendingIncoming(seq) {
+  return pendingHitsFor(seq).length > 0;
 }
 
 function pendingSwapFor(seq, excludeSwapId) {
+  const hits = pendingHitsFor(seq, excludeSwapId);
+  return hits.length ? hits[0].swap : null;
+}
+
+/** Keep in-progress expected stickers on the missing set so they never count as owned. */
+function syncPendingNeedList() {
+  let changed = false;
   for (const swap of openPostalSwaps()) {
-    if (excludeSwapId && swap.id === excludeSwapId) continue;
     for (const line of swap.expected || []) {
-      if (line.status === 'pending' && line.seq === seq) return swap;
+      if (line.status !== 'pending') continue;
+      if (!countMap.has(line.seq) && !missingSet.has(line.seq)) {
+        missingSet.add(line.seq);
+        changed = true;
+      }
     }
   }
-  return null;
+  return changed;
 }
 
 function stickerLabel(seq) {
@@ -897,16 +923,14 @@ function analyzePostalExpected(expCounts, excludeSwapId) {
 
 function confirmPostalExpectedWarnings(expCounts, excludeSwapId) {
   const { alreadyHave, alreadyPending } = analyzePostalExpected(expCounts, excludeSwapId);
-  if (!alreadyHave.length && !alreadyPending.length) return true;
-  let msg = 'Check these expected stickers:\n';
-  if (alreadyHave.length) {
-    msg += '\nYou already have:\n• ' + alreadyHave.join('\n• ');
-  }
   if (alreadyPending.length) {
-    msg += '\n\nAlready expected in another open swap:\n• ' + alreadyPending.join('\n• ');
+    alert('These stickers are already expected in another open swap — booking them again would double-book:\n\n• ' +
+      alreadyPending.join('\n• ') +
+      '\n\nRemove them from this swap, or mark the other swap received / written off first.');
+    return false;
   }
-  msg += '\n\nContinue anyway?';
-  return confirm(msg);
+  if (!alreadyHave.length) return true;
+  return confirm('You already have these in your album:\n• ' + alreadyHave.join('\n• ') + '\n\nContinue anyway?');
 }
 
 function transitIcon(size) {
@@ -1247,7 +1271,8 @@ function restoreStateFromData(data) {
   colorMode = resolveColorMode(colorModePref);
   document.documentElement.setAttribute('data-mode', colorMode);
   updateModeToggle();
-  return { migrated, miss, counts };
+  const pendingSynced = syncPendingNeedList();
+  return { migrated, miss, counts, pendingSynced };
 }
 
 function saveState() {
@@ -1282,10 +1307,10 @@ function loadState() {
     if (raw) {
       const data = JSON.parse(raw);
       if (!data || !Array.isArray(data.missing)) throw new Error('Invalid save');
-      const { migrated } = restoreStateFromData(data);
+      const { migrated, pendingSynced } = restoreStateFromData(data);
       const ccAdded = !data.ccStickersAdded && mergeCcStickersAsMissing();
       setSaveStatus(true, migrated.changed || ccAdded ? '● Restored & fixed album order' : '● Restored from this device');
-      if (migrated.changed || ccAdded || !(data.version >= 3) || !data.counts) saveState();
+      if (migrated.changed || ccAdded || pendingSynced || !(data.version >= 3) || !data.counts) saveState();
       return;
     }
   } catch (e) {
@@ -1543,9 +1568,6 @@ function savePostalSwap(id) {
   for (const [seq, qty] of oldPending) {
     if (!newPendingExp.has(seq) && copiesOf(seq) === 0) missingSet.add(seq);
   }
-  for (const [seq, qty] of newPendingExp) {
-    if (!oldPending.has(seq) && missingSet.has(seq)) missingSet.delete(seq);
-  }
   const newExpected = [...settled];
   for (const [seq, qty] of newPendingExp) {
     const prev = swap.expected.find(l => l.seq === seq && l.status === 'pending');
@@ -1636,6 +1658,184 @@ function postalShowDetail(id) {
   renderPostalPanel();
 }
 
+function postalShowInbox() {
+  postalView = 'inbox';
+  postalDetailId = null;
+  renderPostalPanel();
+}
+
+function showPostalPanel() {
+  ['addPanel', 'tradePanel', 'postalPanel', 'sharePanel', 'dataPanel'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.style.display = id === 'postalPanel' ? 'block' : 'none';
+  });
+}
+
+function openPostalSwap(id) {
+  showPostalPanel();
+  postalShowDetail(id);
+}
+
+function receivePendingFromSearch(seq) {
+  const hits = pendingHitsFor(seq);
+  if (!hits.length) {
+    showToast('Not expected in an open swap');
+    return;
+  }
+  const hit = hits[0];
+  const before = celebrationSnapshot();
+  if (!receiveExpectedLine(hit.swap.id, hit.idx, true)) return;
+  maybeCelebrate(before);
+  if (hits.length > 1) {
+    showToast('✅ Marked arrived from ' + (hit.swap.person || 'swap') +
+      ' — still expected from ' + hits.slice(1).map(h => h.swap.person || 'another swap').join(', '));
+  }
+}
+
+function focusPendingSticker(seq) {
+  const info = seqToInfo[seq];
+  if (!info) return;
+  const input = document.getElementById('searchInput');
+  input.value = info.code + info.cardNum;
+  handleSearch();
+  input.scrollIntoView({ block: 'nearest' });
+}
+
+function analyzePostalInbox(raw) {
+  const { counts, unknown } = parseMultiInputCounted(raw);
+  const slots = [];
+  for (const swap of openPostalSwaps()) {
+    (swap.expected || []).forEach((line, idx) => {
+      if (line.status === 'pending') {
+        slots.push({ swap, idx, seq: line.seq, qty: line.qty, used: 0 });
+      }
+    });
+  }
+  slots.sort((a, b) => String(a.swap.postedDate || '').localeCompare(String(b.swap.postedDate || '')) ||
+    String(a.swap.createdAt || '').localeCompare(String(b.swap.createdAt || '')));
+  const bySeq = new Map();
+  for (const slot of slots) {
+    if (!bySeq.has(slot.seq)) bySeq.set(slot.seq, []);
+    bySeq.get(slot.seq).push(slot);
+  }
+  const matched = [];
+  const unexpected = [];
+  const extras = [];
+  const doubleBooked = [];
+  const touched = new Set();
+  for (const [seq, qty] of counts) {
+    const s = +seq;
+    const list = bySeq.get(s) || [];
+    const people = [...new Set(list.map(slot => slot.swap.person || 'swap'))];
+    if (people.length > 1) {
+      doubleBooked.push({ seq: s, label: stickerLabel(s), people });
+    }
+    let left = qty;
+    for (const slot of list) {
+      if (left <= 0) break;
+      if (slot.used >= slot.qty) continue;
+      slot.used += 1;
+      left -= 1;
+      matched.push({
+        seq: s,
+        swapId: slot.swap.id,
+        idx: slot.idx,
+        person: slot.swap.person || 'swap',
+        label: stickerLabel(s)
+      });
+      touched.add(slot.swap.id);
+    }
+    if (!list.length && left > 0) unexpected.push({ seq: s, qty: left, label: stickerLabel(s) });
+    else if (left > 0) extras.push({ seq: s, qty: left, label: stickerLabel(s) });
+  }
+  const stillMissing = [];
+  for (const slot of slots) {
+    if (!touched.has(slot.swap.id)) continue;
+    if (slot.used >= slot.qty) continue;
+    stillMissing.push({
+      seq: slot.seq,
+      person: slot.swap.person || 'swap',
+      swapId: slot.swap.id,
+      label: stickerLabel(slot.seq)
+    });
+  }
+  return { matched, unexpected, extras, doubleBooked, stillMissing, unknown, applied: false };
+}
+
+function previewPostalInbox() {
+  const el = document.getElementById('postalInboxInput');
+  postalInboxRaw = el ? el.value : postalInboxRaw;
+  if (!postalInboxRaw.trim()) {
+    showToast('Paste the stickers that arrived first');
+    return;
+  }
+  postalInboxPreview = analyzePostalInbox(postalInboxRaw);
+  renderPostalPanel();
+}
+
+function applyPostalInbox() {
+  if (!postalInboxPreview || postalInboxPreview.applied) {
+    previewPostalInbox();
+    if (!postalInboxPreview || postalInboxPreview.applied) return;
+  }
+  if (!postalInboxPreview.matched.length) {
+    showToast('Nothing matched an open swap');
+    return;
+  }
+  const before = celebrationSnapshot();
+  let n = 0;
+  for (const m of postalInboxPreview.matched) {
+    if (receiveExpectedLine(m.swapId, m.idx, true, true)) n += 1;
+  }
+  postalInboxPreview.applied = true;
+  saveState();
+  render();
+  maybeCelebrate(before);
+  renderPostalPanel();
+  showToast('✅ Marked ' + n + ' sticker' + (n === 1 ? '' : 's') + ' received across swaps');
+}
+
+function renderInboxReport(preview) {
+  if (!preview) return '';
+  const li = (arr, cls) => arr.map(x => '<li class="' + cls + '">' + escapeHtml(
+    (x.qty && x.qty > 1 ? x.label + ' ×' + x.qty : x.label) +
+    (x.person ? ' — ' + x.person : '') +
+    (x.people ? ' — ' + x.people.join(' & ') : '')
+  ) + '</li>').join('');
+  let html = '<div class="inbox-report">';
+  if (preview.applied) {
+    html += '<p style="color:var(--success);font-weight:600;margin:0 0 8px">Applied. Matched stickers are marked received.</p>';
+  }
+  if (preview.matched.length) {
+    html += '<h4 class="ok">Matched to swaps (' + preview.matched.length + ')</h4><ul>' +
+      preview.matched.map(m => '<li class="ok">' + escapeHtml(m.label + ' → ' + m.person) + '</li>').join('') + '</ul>';
+  } else {
+    html += '<h4>Matched to swaps</h4><p style="color:var(--muted);margin:0">None of this list is still expected on an open swap.</p>';
+  }
+  if (preview.stillMissing.length) {
+    html += '<h4 class="warn">Still missing from those swaps (' + preview.stillMissing.length + ')</h4><ul>' +
+      li(preview.stillMissing, 'warn') + '</ul>';
+  }
+  if (preview.unexpected.length) {
+    html += '<h4 class="bad">Not expected on any open swap (' + preview.unexpected.length + ')</h4><ul>' +
+      li(preview.unexpected, 'bad') + '</ul>';
+  }
+  if (preview.extras.length) {
+    html += '<h4 class="warn">Extra copies beyond what was expected (' + preview.extras.length + ')</h4><ul>' +
+      li(preview.extras, 'warn') + '</ul>';
+  }
+  if (preview.doubleBooked.length) {
+    html += '<h4 class="warn">Double-booked (same sticker expected from more than one person)</h4><ul>' +
+      preview.doubleBooked.map(x => '<li class="warn">' + escapeHtml(x.label + ' — ' + x.people.join(' & ')) + '</li>').join('') + '</ul>';
+  }
+  if (preview.unknown.length) {
+    html += '<h4 class="bad">Could not parse</h4><ul>' +
+      preview.unknown.map(u => '<li class="bad">' + escapeHtml(u) + '</li>').join('') + '</ul>';
+  }
+  html += '</div>';
+  return html;
+}
+
 function createPostalSwap() {
   const person = document.getElementById('postalPerson').value.trim();
   const source = document.getElementById('postalSource').value;
@@ -1669,9 +1869,6 @@ function createPostalSwap() {
   for (const [seq, qty] of sentCounts) {
     setCopies(seq, copiesOf(seq) - qty);
   }
-  for (const [seq] of expCounts) {
-    if (missingSet.has(seq)) missingSet.delete(seq);
-  }
   const swap = {
     id: 'ps' + Date.now(),
     status: 'open',
@@ -1695,20 +1892,25 @@ function createPostalSwap() {
   if (unknown.length) showToast('⚠️ Could not parse: ' + unknown.join(', '));
 }
 
-function receiveExpectedLine(swapId, lineIdx, skipCelebrate) {
+function receiveExpectedLine(swapId, lineIdx, skipCelebrate, skipRefresh) {
   const swap = getSwap(swapId);
-  if (!swap) return;
+  if (!swap) return false;
   const line = swap.expected[lineIdx];
-  if (!line || line.status !== 'pending') return;
+  if (!line || line.status !== 'pending') return false;
   const before = skipCelebrate ? null : celebrationSnapshot();
   addCopiesQuiet(line.seq, line.qty);
   line.status = 'received';
   maybeCompleteSwap(swap);
-  saveState();
-  render();
-  renderPostalPanel();
-  showToast('✅ Received ' + stickerLabel(line.seq));
+  if (!skipRefresh) {
+    saveState();
+    render();
+    renderPostalPanel();
+    showToast('✅ Received ' + stickerLabel(line.seq));
+    const q = document.getElementById('searchInput');
+    if (q && q.value.trim()) handleSearch();
+  }
   if (!skipCelebrate) maybeCelebrate(before);
+  return true;
 }
 
 function writeOffExpectedLine(swapId, lineIdx) {
@@ -1777,13 +1979,6 @@ function confirmSelectedReceived(swapId) {
   const before = celebrationSnapshot();
   indices.forEach(idx => receiveExpectedLine(swapId, idx, true));
   maybeCelebrate(before);
-}
-
-function writeOffSelected(swapId) {
-  const sel = postalReviewSel[swapId];
-  if (!sel || !sel.size) { showToast('Select stickers to write off'); return; }
-  [...sel].sort((a, b) => b - a).forEach(idx => writeOffExpectedLine(swapId, idx));
-  postalReviewSel[swapId] = new Set();
 }
 
 function writeOffSelected(swapId) {
@@ -1874,7 +2069,7 @@ function renderPostalPanel() {
     el.innerHTML = '<h3>📮 ' + (editing ? 'Edit swap' : 'New postal swap') + '</h3>' +
       '<p style="font-size:12px;color:var(--muted);margin:0 0 8px">' +
       (editing ? 'Update details, date posted, or sticker lists. <strong>Removing sent stickers won\'t restore spares.</strong>' :
-        'Stickers you <strong>send</strong> leave your spare count immediately. <strong>Expected</strong> stickers come off your need/share list until you confirm or write them off.') +
+        'Stickers you <strong>send</strong> leave your spare count immediately. <strong>Expected</strong> stickers stay off your need/share list until they arrive or you write them off. The same sticker cannot be expected from two open swaps.') +
       '</p>' +
       '<div class="postal-form">' +
       '<label>Name / nickname</label><input type="text" id="postalPerson" value="' + escapeAttr(swap ? swap.person : '') + '" placeholder="e.g. Miguel">' +
@@ -1942,10 +2137,27 @@ function renderPostalPanel() {
     el.innerHTML = html;
     return;
   }
+  if (postalView === 'inbox') {
+    el.innerHTML = '<h3>📬 Sort today’s post</h3>' +
+      '<p style="font-size:12px;color:var(--muted);margin:0 0 8px">Paste every sticker that arrived — from any envelope. We’ll match them to open swaps and show extras, unexpected, and still-missing from the swaps that were touched.</p>' +
+      (open.length ? '' : '<p style="color:var(--danger);font-size:12px">No open swaps to allocate against.</p>') +
+      '<textarea id="postalInboxInput" oninput="postalInboxRaw=this.value" style="width:100%;min-height:120px;font-family:monospace;font-size:12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 10px" placeholder="MEX: 4, 14&#10;ESP15 ARG7">' +
+      escapeHtml(postalInboxRaw) + '</textarea>' +
+      '<div class="file-row" style="margin-top:10px">' +
+      '<button type="button" class="btn btn-add" onclick="previewPostalInbox()">Check list</button>' +
+      (postalInboxPreview && postalInboxPreview.matched.length && !postalInboxPreview.applied
+        ? '<button type="button" class="btn btn-add" style="background:var(--success);color:var(--btn-ink)" onclick="applyPostalInbox()">Mark matched as received</button>'
+        : '') +
+      '<button type="button" class="btn btn-share" onclick="postalShowList()">← All swaps</button>' +
+      '</div>' +
+      renderInboxReport(postalInboxPreview);
+    return;
+  }
   let html = '<h3>📮 Postal swaps</h3>' +
-    '<p style="font-size:12px;color:var(--muted);margin:0 0 10px">Track stickers sent by post and what you\'re still waiting for. Share lists automatically exclude pending swaps.</p>' +
+    '<p style="font-size:12px;color:var(--muted);margin:0 0 10px">Track stickers sent by post and what you\'re still waiting for. Need and share lists exclude in-progress expected stickers.</p>' +
     '<div class="file-row" style="margin-bottom:10px">' +
     '<button type="button" class="btn btn-add" onclick="postalShowCreate()">+ New swap</button>' +
+    '<button type="button" class="btn btn-add" style="background:var(--success);color:var(--btn-ink)" onclick="postalShowInbox()">📬 Sort today’s post</button>' +
     '<button type="button" class="btn btn-share" onclick="togglePanel(\'postal\')">Close</button></div>';
   if (!open.length && !postalSwaps.filter(s => s.status === 'completed').length) {
     html += '<div class="empty" style="padding:20px">No postal swaps yet.</div>';
@@ -2333,6 +2545,10 @@ function copyFromBtn(btn) {
 }
 
 function cycleSeq(seq, delta) {
+  if (delta < 0 && isPendingIncoming(seq) && copiesOf(seq) < 1) {
+    showToast('Expected by post — open the swap to mark it arrived or write it off');
+    return;
+  }
   bumpCopies(seq, delta == null ? 1 : delta);
 }
 
@@ -2599,7 +2815,7 @@ function buildShare() {
   allSections.forEach(sec => {
     const missCards = [], dupeCards = [];
     sec.stickers.forEach(s => {
-      if (missingSet.has(s.seq)) missCards.push(s.cardNum);
+      if (isNeedForTrade(s.seq)) missCards.push(s.cardNum);
       if (sparesOf(s.seq) >= 1) dupeCards.push(s.cardNum);
     });
     // History stickers are album codes FWC9–19
@@ -2653,10 +2869,20 @@ function handleSearch() {
       let cls, msg;
       const pageTxt = info.pages ? ' · ' + formatPages(info.pages) : '';
       if (pending) {
-        const sw = pendingSwapFor(seq);
+        const hits = pendingHitsFor(seq);
+        const sw = hits[0] && hits[0].swap;
         cls = 'transit';
         msg = transitIcon(14) + ' ' + cm[1] + ' #' + cm[2] + ' — <strong>' + info.name + '</strong> — Expecting by post' +
           (sw ? ' (' + escapeHtml(sw.person) + ')' : '') + pageTxt;
+        if (hits.length > 1) {
+          msg += ' <span style="opacity:.85">+ ' + (hits.length - 1) + ' more swap' + (hits.length > 2 ? 's' : '') + '</span>';
+        }
+        msg += '<div class="lookup-actions">';
+        hits.forEach(h => {
+          msg += '<button type="button" class="btn btn-share" onclick="openPostalSwap(\'' + h.swap.id + '\')">Open ' +
+            escapeHtml(h.swap.person || 'swap') + '</button>';
+        });
+        msg += '<button type="button" class="btn btn-add" onclick="receivePendingFromSearch(' + seq + ')">Mark arrived</button></div>';
       } else if (n === 0) { cls = 'need'; msg = '❌ ' + cm[1] + ' #' + cm[2] + ' — <strong>' + info.name + '</strong> — You NEED this' + pageTxt; }
       else if (n >= 2) { cls = 'dupe'; msg = '🔄 ' + cm[1] + ' #' + cm[2] + ' — <strong>' + info.name + '</strong> — <strong>+' + (n - 1) + '</strong> spare' + (n > 2 ? 's' : '') + pageTxt; }
       else { cls = 'have'; msg = '✅ ' + cm[1] + ' #' + cm[2] + ' — <strong>' + info.name + '</strong> — In your album' + pageTxt; }
@@ -2707,16 +2933,15 @@ function toggleCard(code) {
 }
 
 function updateStats() {
-  const tm = missingSet.size;
-  const spareTypes = spareSeqList().length;
-  const extras = [...countMap.values()].reduce((a, n) => a + Math.max(0, n - 1), 0);
   const pendingN = openPostalSwaps().reduce((a, s) => a + s.expected.filter(l => l.status === 'pending').length, 0);
+  const tm = [...missingSet].filter(seq => !isPendingIncoming(seq)).length;
+  const extras = [...countMap.values()].reduce((a, n) => a + Math.max(0, n - 1), 0);
   const openN = openPostalSwaps().length;
   const inAlbum = TOTAL - tm - pendingN;
-  const pct = Math.round((TOTAL - tm - pendingN) / TOTAL * 100);
+  const pct = Math.round(inAlbum / TOTAL * 100);
   document.getElementById('overallFill').style.width = Math.max(0, pct) + '%';
   document.getElementById('statsRow').innerHTML =
-    '<div class="stat-pill"><strong>' + (TOTAL - tm - pendingN) + '</strong> in album</div>' +
+    '<div class="stat-pill"><strong>' + inAlbum + '</strong> in album</div>' +
     '<div class="stat-pill"><strong>' + tm + '</strong> need</div>' +
     (pendingN ? '<div class="stat-pill">' + transitIcon(12) + '<strong>' + pendingN + '</strong> pending</div>' : '') +
     '<div class="stat-pill"><strong>+' + extras + '</strong> spares</div>' +
@@ -2836,7 +3061,11 @@ function render() {
         '<button type="button" class="qty-btn" title="Remove one copy" onclick="event.stopPropagation();cycleSeq(' + s.seq + ',-1)">−</button>' +
         '<button type="button" class="qty-btn" title="Add one copy" onclick="event.stopPropagation();cycleSeq(' + s.seq + ',1)">+</button>' +
         '</span>';
-      return '<div class="sticker-row ' + cls + '" style="' + hl + '" onclick="cycleSeq(' + s.seq + ',1)" oncontextmenu="event.preventDefault();cycleSeq(' + s.seq + ',-1)" title="Click +1 · right-click −1' + (s.page ? ' · album p.' + s.page : '') + '">' +
+      const rowClick = pending ? 'focusPendingSticker(' + s.seq + ')' : 'cycleSeq(' + s.seq + ',1)';
+      const rowCtx = pending ? 'focusPendingSticker(' + s.seq + ')' : 'cycleSeq(' + s.seq + ',-1)';
+      return '<div class="sticker-row ' + cls + '" style="' + hl + '" onclick="' + rowClick + '" oncontextmenu="event.preventDefault();' + rowCtx + '" title="' +
+        (pending ? 'In a postal swap — click to open lookup' : 'Click +1 · right-click −1') +
+        (s.page ? ' · album p.' + s.page : '') + '">' +
         '<span class="s-seq">#' + s.seq + '</span>' +
         '<span class="s-num">' + s.cardNum + '</span>' +
         '<span class="s-name">' + escapeHtml(s.name) + '</span>' +
