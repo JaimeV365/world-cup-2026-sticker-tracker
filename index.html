@@ -1529,8 +1529,28 @@ function swapProgress(swap) {
   const exp = swap.expected || [];
   const done = exp.filter(l => l.status === 'received').length;
   const off = exp.filter(l => l.status === 'written_off').length;
-  const pending = exp.filter(l => l.status === 'pending').length;
+  const pending = exp.filter(l => isExpectedPending(l)).length;
   return { done, off, pending, total: exp.length };
+}
+
+/** Whole days since posted (or created). Null if unknown. */
+function postalDaysAgo(swap) {
+  const raw = (swap && (swap.postedDate || (swap.createdAt && String(swap.createdAt).slice(0, 10)))) || '';
+  if (!raw) return null;
+  const d = new Date(/^\d{4}-\d{2}-\d{2}$/.test(raw) ? raw + 'T12:00:00' : raw);
+  if (isNaN(d.getTime())) return null;
+  const now = new Date();
+  const today = Date.UTC(now.getFullYear(), now.getMonth(), now.getDate());
+  const then = Date.UTC(d.getFullYear(), d.getMonth(), d.getDate());
+  return Math.max(0, Math.round((today - then) / 86400000));
+}
+
+function postalAgeLabel(swap) {
+  const days = postalDaysAgo(swap);
+  if (days == null) return '';
+  if (days === 0) return 'today';
+  if (days === 1) return '1 day ago';
+  return days + ' days ago';
 }
 
 function postalShowEdit(id) {
@@ -2206,6 +2226,10 @@ function renderPostalPanel() {
       '<button type="button" class="btn btn-danger" style="font-size:11px" onclick="deletePostalSwap(\'' + swap.id + '\')">Delete &amp; revert</button>' +
       '<button type="button" class="btn btn-share" style="font-size:11px" onclick="postalShowList()">← All swaps</button></div>' +
       '<div class="postal-meta">' + escapeHtml(swap.postedDate) +
+      (swap.status !== 'completed' && postalAgeLabel(swap)
+        ? ' · <strong style="color:' + ((postalDaysAgo(swap) || 0) >= 14 ? 'var(--danger)' : 'var(--transit)') + '">' +
+          escapeHtml(postalAgeLabel(swap)) + '</strong>'
+        : '') +
       (swap.source ? ' · ' + escapeHtml(swap.source) : '') +
       (swap.status === 'completed' ? ' · <strong style="color:var(--success)">Completed</strong>' : '') +
       '</div>';
@@ -2268,12 +2292,22 @@ function renderPostalPanel() {
   if (!open.length && !postalSwaps.filter(s => s.status === 'completed').length) {
     html += '<div class="empty" style="padding:20px">No postal swaps yet.</div>';
   } else {
-    open.forEach(swap => {
+    const openSorted = [...open].sort((a, b) => {
+      const da = postalDaysAgo(a), db = postalDaysAgo(b);
+      if (da != null && db != null && db !== da) return db - da; // oldest waiting first
+      return String(a.postedDate || '').localeCompare(String(b.postedDate || ''));
+    });
+    openSorted.forEach(swap => {
       const prog = swapProgress(swap);
       const sentN = swap.sent.reduce((a, l) => a + l.qty, 0);
+      const age = postalAgeLabel(swap);
+      const days = postalDaysAgo(swap);
+      const ageHtml = age
+        ? ' · <strong style="color:' + (days >= 14 ? 'var(--danger)' : 'var(--transit)') + '">' + escapeHtml(age) + '</strong>'
+        : '';
       html += '<div class="postal-card" style="cursor:pointer" onclick="postalShowDetail(\'' + swap.id + '\')">' +
         '<h4>' + escapeHtml(swap.person) + '</h4>' +
-        '<div class="postal-meta">' + escapeHtml(swap.postedDate) +
+        '<div class="postal-meta">' + escapeHtml(swap.postedDate) + ageHtml +
         (swap.source ? ' · ' + escapeHtml(swap.source) : '') + '</div>' +
         '<div class="postal-meta">Sent ' + sentN + ' · Expecting ' + prog.done + '/' + prog.total + ' received' +
         (prog.pending ? ' · <strong style="color:var(--transit)">' + prog.pending + ' pending</strong>' : '') +
