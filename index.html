@@ -247,7 +247,8 @@
   .backup-banner.show{display:flex}
   .backup-banner strong{color:var(--warning)}
   .backup-banner .btn{font-size:11px;padding:4px 10px;min-height:28px}
-  .postal-card{background:var(--surface2);border:1px solid var(--border);border-radius:var(--radius);padding:10px 12px;margin-bottom:8px}
+  .postal-card.complete-swap{border-color:color-mix(in srgb,var(--success) 55%,var(--border));background:color-mix(in srgb,var(--success) 10%,var(--surface))}
+  .postal-card.complete-swap h4{color:var(--success)}
   .postal-card h4{margin:0 0 4px;font-size:13px;font-weight:600}
   .postal-meta{font-size:10px;color:var(--muted);margin-bottom:6px;line-height:1.5}
   .postal-progress{font-size:10px;color:var(--ui-accent);font-weight:600;margin-bottom:6px}
@@ -857,7 +858,7 @@ function pendingHitsFor(seq, excludeSwapId) {
   for (const swap of openPostalSwaps()) {
     if (excludeSwapId && swap.id === excludeSwapId) continue;
     (swap.expected || []).forEach((line, idx) => {
-      if (line.status === 'pending' && line.seq === seq) hits.push({ swap, line, idx });
+      if (isExpectedPending(line) && +line.seq === +seq) hits.push({ swap, line, idx });
     });
   }
   return hits;
@@ -971,10 +972,21 @@ function sanitizePostalSwaps(arr) {
   return out;
 }
 
+function isExpectedPending(line) {
+  return !!line && line.status !== 'received' && line.status !== 'written_off';
+}
+
 function maybeCompleteSwap(swap) {
-  if (!swap.expected.every(l => l.status !== 'pending')) return;
+  if (!swap || !(swap.expected || []).length) return;
+  if ((swap.expected || []).some(isExpectedPending)) {
+    if (swap.status === 'completed') {
+      swap.status = 'open';
+      swap.completedAt = null;
+    }
+    return;
+  }
   swap.status = 'completed';
-  swap.completedAt = new Date().toISOString();
+  if (!swap.completedAt) swap.completedAt = new Date().toISOString();
 }
 
 function addCopiesQuiet(seq, qty) {
@@ -1707,11 +1719,15 @@ function focusPendingSticker(seq) {
 
 function analyzePostalInbox(raw) {
   const { counts, unknown } = parseMultiInputCounted(raw);
+  const parsed = [];
+  for (const [seq, qty] of counts) {
+    parsed.push({ seq: +seq, qty, label: stickerLabel(+seq) });
+  }
   const slots = [];
   for (const swap of openPostalSwaps()) {
     (swap.expected || []).forEach((line, idx) => {
-      if (line.status === 'pending') {
-        slots.push({ swap, idx, seq: line.seq, qty: line.qty, used: 0 });
+      if (isExpectedPending(line)) {
+        slots.push({ swap, idx, seq: +line.seq, qty: Math.max(1, +line.qty || 1), used: 0 });
       }
     });
   }
@@ -1719,14 +1735,16 @@ function analyzePostalInbox(raw) {
     String(a.swap.createdAt || '').localeCompare(String(b.swap.createdAt || '')));
   const bySeq = new Map();
   for (const slot of slots) {
-    if (!bySeq.has(slot.seq)) bySeq.set(slot.seq, []);
-    bySeq.get(slot.seq).push(slot);
+    const key = +slot.seq;
+    if (!bySeq.has(key)) bySeq.set(key, []);
+    bySeq.get(key).push(slot);
   }
   const matched = [];
   const unexpected = [];
   const extras = [];
   const doubleBooked = [];
   const touched = new Set();
+  const seenPair = new Set();
   for (const [seq, qty] of counts) {
     const s = +seq;
     const list = bySeq.get(s) || [];
@@ -1740,13 +1758,17 @@ function analyzePostalInbox(raw) {
       if (slot.used >= slot.qty) continue;
       slot.used += 1;
       left -= 1;
-      matched.push({
-        seq: s,
-        swapId: slot.swap.id,
-        idx: slot.idx,
-        person: slot.swap.person || 'swap',
-        label: stickerLabel(s)
-      });
+      const pair = slot.swap.id + ':' + slot.idx;
+      if (!seenPair.has(pair)) {
+        seenPair.add(pair);
+        matched.push({
+          seq: s,
+          swapId: String(slot.swap.id),
+          idx: slot.idx,
+          person: slot.swap.person || 'swap',
+          label: stickerLabel(s)
+        });
+      }
       touched.add(slot.swap.id);
     }
     if (!list.length && left > 0) unexpected.push({ seq: s, qty: left, label: stickerLabel(s) });
@@ -1763,7 +1785,7 @@ function analyzePostalInbox(raw) {
       label: stickerLabel(slot.seq)
     });
   }
-  return { matched, unexpected, extras, doubleBooked, stillMissing, unknown, applied: false };
+  return { matched, unexpected, extras, doubleBooked, stillMissing, unknown, parsed, applied: false, appliedN: 0, completedNames: [] };
 }
 
 function previewPostalInbox() {
@@ -1777,26 +1799,56 @@ function previewPostalInbox() {
   renderPostalPanel();
 }
 
+function findPendingExpectedIndex(swap, seq) {
+  if (!swap) return -1;
+  const want = +seq;
+  return (swap.expected || []).findIndex(l => isExpectedPending(l) && +l.seq === want);
+}
+
 function applyPostalInbox() {
-  if (!postalInboxPreview || postalInboxPreview.applied) {
-    previewPostalInbox();
-    if (!postalInboxPreview || postalInboxPreview.applied) return;
+  const el = document.getElementById('postalInboxInput');
+  if (el) postalInboxRaw = el.value;
+  if (!postalInboxRaw.trim()) {
+    showToast('Paste the stickers that arrived first');
+    return;
   }
+  postalInboxPreview = analyzePostalInbox(postalInboxRaw);
   if (!postalInboxPreview.matched.length) {
-    showToast('Nothing matched an open swap');
+    renderPostalPanel();
+    showToast('Nothing matched an open swap — check the parsed list');
+    return;
+  }
+  const lines = postalInboxPreview.matched.map(m => m.label + '  →  ' + m.person);
+  const previewTxt = lines.slice(0, 25).join('\n') +
+    (lines.length > 25 ? '\n… +' + (lines.length - 25) + ' more' : '');
+  if (!confirm('Mark ' + postalInboxPreview.matched.length + ' expected sticker(s) as received from these swaps?\n\n' + previewTxt)) {
+    renderPostalPanel();
     return;
   }
   const before = celebrationSnapshot();
   let n = 0;
   for (const m of postalInboxPreview.matched) {
-    if (receiveExpectedLine(m.swapId, m.idx, true, true)) n += 1;
+    const swap = getSwap(m.swapId);
+    const idx = findPendingExpectedIndex(swap, m.seq);
+    if (idx < 0) continue;
+    if (receiveExpectedLine(swap.id, idx, true, true)) n += 1;
   }
+  openPostalSwaps().forEach(maybeCompleteSwap);
+  const completedNames = postalSwaps.filter(s => s.status === 'completed' &&
+    postalInboxPreview.matched.some(m => m.swapId === s.id)).map(s => s.person || 'swap');
   postalInboxPreview.applied = true;
+  postalInboxPreview.appliedN = n;
+  postalInboxPreview.completedNames = [...new Set(completedNames)];
   saveState();
   render();
   maybeCelebrate(before);
   renderPostalPanel();
-  showToast('✅ Marked ' + n + ' sticker' + (n === 1 ? '' : 's') + ' received across swaps');
+  if (!n) {
+    showToast('⚠️ None of those stickers were still pending on an open swap');
+    return;
+  }
+  const doneN = postalInboxPreview.completedNames.length;
+  showToast('✅ ' + n + ' received' + (doneN ? ' · ' + doneN + ' swap' + (doneN === 1 ? '' : 's') + ' completed' : ''));
 }
 
 function renderInboxReport(preview) {
@@ -1807,8 +1859,16 @@ function renderInboxReport(preview) {
     (x.people ? ' — ' + x.people.join(' & ') : '')
   ) + '</li>').join('');
   let html = '<div class="inbox-report">';
+  if (preview.parsed && preview.parsed.length && !preview.applied) {
+    html += '<h4>We read these stickers from your paste</h4><ul>' +
+      preview.parsed.map(p => '<li>' + escapeHtml(p.label + (p.qty > 1 ? ' ×' + p.qty : '')) + '</li>').join('') + '</ul>';
+  }
   if (preview.applied) {
-    html += '<p style="color:var(--success);font-weight:600;margin:0 0 8px">Applied. Matched stickers are marked received.</p>';
+    html += '<p style="color:var(--success);font-weight:600;margin:0 0 8px">Applied: marked ' +
+      (preview.appliedN || preview.matched.length) + ' as received' +
+      (preview.completedNames && preview.completedNames.length
+        ? '. Completed: ' + preview.completedNames.map(escapeHtml).join(', ')
+        : '. Swaps with leftover stickers stay open.') + '</p>';
   }
   if (preview.matched.length) {
     html += '<h4 class="ok">Matched to swaps (' + preview.matched.length + ')</h4><ul>' +
@@ -1900,7 +1960,7 @@ function receiveExpectedLine(swapId, lineIdx, skipCelebrate, skipRefresh) {
   const swap = getSwap(swapId);
   if (!swap) return false;
   const line = swap.expected[lineIdx];
-  if (!line || line.status !== 'pending') return false;
+  if (!line || !isExpectedPending(line)) return false;
   const before = skipCelebrate ? null : celebrationSnapshot();
   addCopiesQuiet(line.seq, line.qty);
   line.status = 'received';
@@ -1921,7 +1981,7 @@ function writeOffExpectedLine(swapId, lineIdx) {
   const swap = getSwap(swapId);
   if (!swap) return;
   const line = swap.expected[lineIdx];
-  if (!line || line.status !== 'pending') return;
+  if (!line || !isExpectedPending(line)) return;
   missingSet.add(line.seq);
   line.status = 'written_off';
   maybeCompleteSwap(swap);
@@ -2187,15 +2247,13 @@ function renderPostalPanel() {
   }
   if (postalView === 'inbox') {
     el.innerHTML = '<h3>📬 Sort today’s post</h3>' +
-      '<p style="font-size:12px;color:var(--muted);margin:0 0 8px">Paste every sticker that arrived — from any envelope. We’ll match them to open swaps and show extras, unexpected, and still-missing from the swaps that were touched.</p>' +
+      '<p style="font-size:12px;color:var(--muted);margin:0 0 8px">Paste every sticker that arrived — from any envelope, with team codes (e.g. <strong>MEX: 4, 14</strong> or <strong>ESP15 ARG7</strong>). Check first so you can see who each one is allocated to, then confirm to mark them received.</p>' +
       (open.length ? '' : '<p style="color:var(--danger);font-size:12px">No open swaps to allocate against.</p>') +
       '<textarea id="postalInboxInput" oninput="postalInboxRaw=this.value" style="width:100%;min-height:120px;font-family:monospace;font-size:12px;background:var(--surface2);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 10px" placeholder="MEX: 4, 14&#10;ESP15 ARG7">' +
       escapeHtml(postalInboxRaw) + '</textarea>' +
       '<div class="file-row" style="margin-top:10px">' +
       '<button type="button" class="btn btn-add" onclick="previewPostalInbox()">Check list</button>' +
-      (postalInboxPreview && postalInboxPreview.matched.length && !postalInboxPreview.applied
-        ? '<button type="button" class="btn btn-add" style="background:var(--success);color:var(--btn-ink)" onclick="applyPostalInbox()">Mark matched as received</button>'
-        : '') +
+      '<button type="button" class="btn btn-add" style="background:var(--success);color:var(--btn-ink)" onclick="applyPostalInbox()">Mark matched as received</button>' +
       '<button type="button" class="btn btn-share" onclick="postalShowList()">← All swaps</button>' +
       '</div>' +
       renderInboxReport(postalInboxPreview);
@@ -2224,10 +2282,13 @@ function renderPostalPanel() {
     const done = postalSwaps.filter(s => s.status === 'completed');
     if (done.length) {
       html += '<div class="postal-section">Completed</div>';
-      done.slice(0, 5).forEach(swap => {
-        html += '<div class="postal-card" style="opacity:.75;cursor:pointer" onclick="postalShowDetail(\'' + swap.id + '\')">' +
-          '<h4>' + escapeHtml(swap.person) + '</h4>' +
-          '<div class="postal-meta">' + escapeHtml(swap.postedDate) + ' · completed</div></div>';
+      done.forEach(swap => {
+        const prog = swapProgress(swap);
+        html += '<div class="postal-card complete-swap" style="cursor:pointer" onclick="postalShowDetail(\'' + swap.id + '\')">' +
+          '<h4>' + escapeHtml(swap.person) + ' · complete</h4>' +
+          '<div class="postal-meta">' + escapeHtml(swap.postedDate) +
+          (swap.source ? ' · ' + escapeHtml(swap.source) : '') +
+          ' · ' + prog.done + '/' + prog.total + ' received</div></div>';
       });
     }
   }
