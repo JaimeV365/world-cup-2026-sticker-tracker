@@ -2215,7 +2215,7 @@ function renderPostalPanel() {
     }
     html += '<div class="postal-section">Sent — pack this envelope (' +
       swap.sent.reduce((a, l) => a + l.qty, 0) + ')</div>' +
-      '<p style="font-size:11px;color:var(--muted);margin:0 0 6px">Tick each sticker as you put it in the letter. Names stay on screen — no tiny scrolling box.</p>' +
+      '<p style="font-size:11px;color:var(--muted);margin:0 0 6px">Tick each sticker as you put it in the letter.</p>' +
       (swap.sent.length
         ? '<div class="file-row" style="margin-bottom:6px">' +
           '<button type="button" class="btn btn-share" onclick="copySentList(\'' + swap.id + '\')">Copy sent list</button></div>'
