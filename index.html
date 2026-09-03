@@ -873,13 +873,16 @@ function pendingSwapFor(seq, excludeSwapId) {
   return hits.length ? hits[0].swap : null;
 }
 
-/** Keep in-progress expected stickers on the missing set so they never count as owned. */
+/**
+ * Pending mail and album ownership are independent: you can own a sticker from a pack
+ * while it is still pending on a swap. Only ensure unowned pending lines stay on the need list.
+ */
 function syncPendingNeedList() {
   let changed = false;
   for (const swap of openPostalSwaps()) {
     for (const line of swap.expected || []) {
       if (line.status !== 'pending') continue;
-      if (!countMap.has(line.seq) && !missingSet.has(line.seq)) {
+      if (copiesOf(line.seq) < 1 && !missingSet.has(line.seq)) {
         missingSet.add(line.seq);
         changed = true;
       }
@@ -954,9 +957,14 @@ function sanitizePostalSwaps(arr) {
       qty: Math.max(1, Math.floor(+l.qty) || 1),
       status: l.status === 'received' || l.status === 'written_off' ? l.status : 'pending'
     }));
-    const unexpected = (raw.unexpected || []).filter(l => seqToInfo[l.seq]).map(l => ({
-      seq: +l.seq, qty: Math.max(1, Math.floor(+l.qty) || 1)
-    }));
+    const unexpected = (raw.unexpected || []).filter(l => seqToInfo[l.seq]).map(l => {
+      const row = {
+        seq: +l.seq,
+        qty: Math.max(1, Math.floor(+l.qty) || 1)
+      };
+      if (l.note) row.note = String(l.note);
+      return row;
+    });
     out.push({
       id: String(raw.id),
       status: raw.status === 'completed' ? 'completed' : 'open',
@@ -3011,12 +3019,27 @@ function handleSearch() {
       const pending = isPendingIncoming(seq);
       let cls, msg;
       const pageTxt = info.pages ? ' · ' + formatPages(info.pages) : '';
+      if (n === 0 && !pending) {
+        cls = 'need';
+        msg = '❌ ' + cm[1] + ' #' + cm[2] + ' — <strong>' + info.name + '</strong> — You NEED this' + pageTxt;
+      } else if (n >= 2) {
+        cls = 'dupe';
+        msg = '🔄 ' + cm[1] + ' #' + cm[2] + ' — <strong>' + info.name + '</strong> — <strong>+' + (n - 1) + '</strong> spare' + (n > 2 ? 's' : '') + pageTxt;
+      } else if (n === 1) {
+        cls = 'have';
+        msg = '✅ ' + cm[1] + ' #' + cm[2] + ' — <strong>' + info.name + '</strong> — In your album' + pageTxt;
+      } else {
+        cls = 'transit';
+        msg = transitIcon(14) + ' ' + cm[1] + ' #' + cm[2] + ' — <strong>' + info.name + '</strong> — Expecting by post' + pageTxt;
+      }
       if (pending) {
         const hits = pendingHitsFor(seq);
         const sw = hits[0] && hits[0].swap;
-        cls = 'transit';
-        msg = transitIcon(14) + ' ' + cm[1] + ' #' + cm[2] + ' — <strong>' + info.name + '</strong> — Expecting by post' +
-          (sw ? ' (' + escapeHtml(sw.person) + ')' : '') + pageTxt;
+        if (n >= 1) {
+          msg += ' · still expecting by post' + (sw ? ' (' + escapeHtml(sw.person) + ')' : '');
+        } else if (sw) {
+          msg += ' (' + escapeHtml(sw.person) + ')';
+        }
         if (hits.length > 1) {
           msg += ' <span style="opacity:.85">+ ' + (hits.length - 1) + ' more swap' + (hits.length > 2 ? 's' : '') + '</span>';
         }
@@ -3026,9 +3049,7 @@ function handleSearch() {
             escapeHtml(h.swap.person || 'swap') + '</button>';
         });
         msg += '<button type="button" class="btn btn-add" onclick="receivePendingFromSearch(' + seq + ')">Mark arrived</button></div>';
-      } else if (n === 0) { cls = 'need'; msg = '❌ ' + cm[1] + ' #' + cm[2] + ' — <strong>' + info.name + '</strong> — You NEED this' + pageTxt; }
-      else if (n >= 2) { cls = 'dupe'; msg = '🔄 ' + cm[1] + ' #' + cm[2] + ' — <strong>' + info.name + '</strong> — <strong>+' + (n - 1) + '</strong> spare' + (n > 2 ? 's' : '') + pageTxt; }
-      else { cls = 'have'; msg = '✅ ' + cm[1] + ' #' + cm[2] + ' — <strong>' + info.name + '</strong> — In your album' + pageTxt; }
+      }
       res.className = 'lookup-result show ' + cls;
       res.innerHTML = msg;
     } else {
@@ -3076,11 +3097,13 @@ function toggleCard(code) {
 }
 
 function updateStats() {
-  const pendingN = openPostalSwaps().reduce((a, s) => a + s.expected.filter(l => l.status === 'pending').length, 0);
-  const tm = [...missingSet].filter(seq => !isPendingIncoming(seq)).length;
+  const pendingN = openPostalSwaps().reduce((a, s) =>
+    a + s.expected.filter(l => isExpectedPending(l)).length, 0);
+  const tm = missingSet.size;
   const extras = [...countMap.values()].reduce((a, n) => a + Math.max(0, n - 1), 0);
   const openN = openPostalSwaps().length;
-  const inAlbum = TOTAL - tm - pendingN;
+  // Album fill = what you physically own; pending mail is tracked separately (may overlap)
+  const inAlbum = TOTAL - tm;
   const pct = Math.round(inAlbum / TOTAL * 100);
   document.getElementById('overallFill').style.width = Math.max(0, pct) + '%';
   document.getElementById('statsRow').innerHTML =
@@ -3125,8 +3148,7 @@ function render() {
     const code = p.id.replace('pill-', '');
     const sec = allSections.find(s => s.code === code);
     if (!sec) return;
-    const mc = sec.stickers.filter(s => missingSet.has(s.seq) && !isPendingIncoming(s.seq)).length;
-    const allDone = sec.stickers.every(s => !missingSet.has(s.seq) || isPendingIncoming(s.seq));
+    const allDone = sec.stickers.every(s => copiesOf(s.seq) >= 1);
     p.classList.toggle('active', activeCountry === code);
     p.classList.toggle('all-done', allDone);
   });
@@ -3134,11 +3156,14 @@ function render() {
   const teamData = allSections.map(sec => {
     const stickers = sec.stickers.map(s => {
       const copies = copiesOf(s.seq);
-      const pending = isPendingIncoming(s.seq);
+      const mailPending = isPendingIncoming(s.seq);
+      // Team view: owned wins. Mail-only pending (no copy yet) shows as in transit.
+      const pending = mailPending && copies < 1;
       return {
         ...s,
         copies,
         pending,
+        mailPending,
         miss: copies === 0 && !pending,
         dupe: sparesOf(s.seq) >= 1
       };
@@ -3147,7 +3172,7 @@ function render() {
     const pc = stickers.filter(s => s.pending).length;
     const dc = stickers.filter(s => s.dupe).length;
     const total = stickers.length;
-    const hc = total - mc - pc;
+    const hc = stickers.filter(s => s.copies >= 1).length;
     return { ...sec, stickers, mc, pc, dc, hc, total, pct: Math.round(hc / total * 100) };
   });
 
@@ -3204,10 +3229,12 @@ function render() {
         '<button type="button" class="qty-btn" title="Remove one copy" onclick="event.stopPropagation();cycleSeq(' + s.seq + ',-1)">−</button>' +
         '<button type="button" class="qty-btn" title="Add one copy" onclick="event.stopPropagation();cycleSeq(' + s.seq + ',1)">+</button>' +
         '</span>';
+      // Mail-only pending: open lookup. Owned (incl. owned + still in post): normal +/-.
       const rowClick = pending ? 'focusPendingSticker(' + s.seq + ')' : 'cycleSeq(' + s.seq + ',1)';
       const rowCtx = pending ? 'focusPendingSticker(' + s.seq + ')' : 'cycleSeq(' + s.seq + ',-1)';
+      const titleOwnedMail = s.mailPending && n >= 1 ? 'Also still expected by post · ' : '';
       return '<div class="sticker-row ' + cls + '" style="' + hl + '" onclick="' + rowClick + '" oncontextmenu="event.preventDefault();' + rowCtx + '" title="' +
-        (pending ? 'In a postal swap — click to open lookup' : 'Click +1 · right-click −1') +
+        (pending ? 'In a postal swap — click to open lookup' : titleOwnedMail + 'Click +1 · right-click −1') +
         (s.page ? ' · album p.' + s.page : '') + '">' +
         '<span class="s-seq">#' + s.seq + '</span>' +
         '<span class="s-num">' + s.cardNum + '</span>' +
